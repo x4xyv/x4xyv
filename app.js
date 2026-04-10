@@ -7,6 +7,7 @@ const { auth, db } = window.__firebase;
 const COLORS = ['#f5c842','#f5904a','#f76e6e','#3ddba8','#5b9cf6','#b07ef8','#f472b6','#3dd6f5','#a3e635','#fb923c'];
 const ICONS  = ['🛒','💼','🏠','✈️','🍔','💊','📚','⛽','🎮','💡','🎁','💰','🏋️','🧾','🔧','📱','🎓','🌿','🎵','🚗'];
 const STORAGE_THEME = 'hassab_theme_v5';
+const STORAGE_CACHE = 'hassab_cache_v5'; // كاش البيانات لكل مستخدم
 
 // ===================== الحالة =====================
 let state = {
@@ -159,16 +160,12 @@ function openSectionContextMenu(e, secId) {
 
 // ===================== Payload / Cloud =====================
 function currentPayload() {
-  // ✅ نحفظ فقط البيانات الحقيقية: الأقسام + المظهر
-  return {
-    sections: state.sections,
-    theme: state.theme,
-  };
+  // ✅ نحفظ فقط الأقسام — المظهر محلي بالكامل ولا يُرفع للسحابة
+  return { sections: state.sections };
 }
 function applyPayload(payload={}) {
   state.sections = Array.isArray(payload.sections) ? payload.sections : [];
-  state.theme    = payload.theme || 'dark';
-  // ✅ حالات UI تبقى محلية ولا تُستعاد من السحابة
+  // ✅ المظهر لا يُستعاد من السحابة أبداً — يبقى كما اختاره المستخدم محلياً
   state.activeId      = state.sections[0]?.id || null;
   state.selectedOp    = '+';
   state.sidebarOpen   = window.innerWidth >= 700;
@@ -177,12 +174,24 @@ function applyPayload(payload={}) {
   state.focusMode     = false;
   applyTheme();
 }
+// ✅ حفظ كاش محلي لكل مستخدم — يتيح العرض الفوري عند الدخول
+function saveLocalCache(userId) {
+  if (!userId) return;
+  try { localStorage.setItem(`${STORAGE_CACHE}_${userId}`, JSON.stringify({ sections: state.sections, ts: Date.now() })); } catch {}
+}
+function loadLocalCache(userId) {
+  try { return JSON.parse(localStorage.getItem(`${STORAGE_CACHE}_${userId}`)||'null'); } catch { return null; }
+}
+function clearLocalCache(userId) {
+  if (userId) try { localStorage.removeItem(`${STORAGE_CACHE}_${userId}`); } catch {}
+}
 async function saveToCloud() {
   if (!currentUserId || isSyncing) return;
   isSyncing = true;
   try {
     setSyncStatus(true, 'جاري الحفظ...');
     await setDoc(doc(db,'users',currentUserId,'data','appData'), currentPayload());
+    saveLocalCache(currentUserId); // ✅ حدّث الكاش المحلي بعد كل حفظ ناجح
     setSyncStatus(false, 'تم الحفظ ✓');
   } catch(err) {
     console.error(err); setSyncStatus(false,'خطأ');
@@ -190,7 +199,6 @@ async function saveToCloud() {
   } finally { isSyncing = false; }
 }
 async function loadFromCloud(userId) {
-  // منع التنفيذ المتزامن — الدعامة الأساسية لمنع race conditions
   if (isSyncing) return;
   isSyncing = true;
   setSyncStatus(true,'جاري التحميل...');
@@ -199,9 +207,9 @@ async function loadFromCloud(userId) {
     if (snap.exists()) {
       applyPayload(snap.data());
     } else {
-      // حساب جديد: ابدأ بقائمة فارغة نظيفة
-      applyPayload({ sections:[], theme: state.theme||'dark' });
+      applyPayload({ sections:[] });
     }
+    saveLocalCache(userId); // ✅ حدّث الكاش بعد التحميل من السحابة
     renderSidebar(); renderMain();
     setSyncStatus(false,'متزامن');
   } catch(err) {
@@ -322,9 +330,7 @@ async function submitRegister() {
     // --- الحل الجذري: حفظ كلا المستندين بـ batch قبل أن يُفعَّل onAuthStateChanged ---
     const batch = writeBatch(db);
     batch.set(doc(db,'users',newUid), { username, displayName, email });
-    batch.set(doc(db,'users',newUid,'data','appData'), {
-      sections:[], theme: state.theme||'dark'
-    });
+    batch.set(doc(db,'users',newUid,'data','appData'), { sections:[] });
     await batch.commit();
     // onAuthStateChanged سيتولى الباقي تلقائياً
     toast(`مرحبًا ${displayName} 🎉`);
@@ -385,6 +391,8 @@ async function deleteAccountPermanently() {
 
 // ===================== ثيم =====================
 function applyTheme() {
+  // ✅ المظهر محلي بالكامل — يُحفظ دائماً في localStorage بغض النظر عن الحساب
+  localStorage.setItem(STORAGE_THEME, state.theme);
   document.body.classList.toggle('light', state.theme==='light');
   const icon=$('themeIcon'); if (!icon) return;
   if (state.theme==='light') {
@@ -996,35 +1004,47 @@ function initEventListeners() {
 onAuthStateChanged(auth, async(user)=>{
   if (user) {
     currentUserId = user.uid;
-    // إلغاء أي مستمع قديم فوراً
     if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot=null; }
-    // جلب بيانات الملف الشخصي
+
+    // ✅ خطوة 1: عرض الكاش المحلي فوراً (بدون انتظار الشبكة)
+    const cached = loadLocalCache(currentUserId);
+    if (cached) {
+      state.sections = Array.isArray(cached.sections) ? cached.sections : [];
+      state.activeId = state.sections[0]?.id || null;
+      renderSidebar(); renderMain();
+      setSyncStatus(false, 'من الكاش — جارِ المزامنة...');
+    }
+
+    // ✅ خطوة 2: جلب بيانات الملف الشخصي (profile) من السحابة
     try {
-      const userDoc=await getDoc(doc(db,'users',currentUserId));
-      const displayName=userDoc.data()?.displayName||user.email;
-      state.currentUser={email:user.email, displayName};
-    } catch { state.currentUser={email:user.email, displayName:user.email}; }
-    // ✅ تحميل البيانات (مع الحارس isSyncing يمنع أي تداخل)
-    await loadFromCloud(currentUserId);
+      const userDoc = await getDoc(doc(db,'users',currentUserId));
+      const displayName = userDoc.data()?.displayName || user.email;
+      state.currentUser = { email: user.email, displayName };
+    } catch { state.currentUser = { email: user.email, displayName: user.email }; }
+
     closeAuthGate();
     renderAuthArea();
     toast(`مرحباً ${state.currentUser.displayName} ✓`);
-    // ✅ تفعيل المستمع بعد اكتمال التحميل — التزامن الفوري مع الأجهزة الأخرى
-    const docRef=doc(db,'users',currentUserId,'data','appData');
-    unsubscribeSnapshot=onSnapshot(docRef,snap=>{
-      if (!snap.exists()||isSyncing) return;
-      const newData=snap.data();
-      // مقارنة البيانات المحفوظة فقط (الأقسام + المظهر)
-      if (JSON.stringify(newData.sections)!==JSON.stringify(state.sections) || newData.theme!==state.theme) {
-        applyPayload(newData); renderSidebar(); renderMain();
+
+    // ✅ خطوة 3: تحميل من السحابة في الخلفية لتحديث الكاش
+    await loadFromCloud(currentUserId);
+
+    // ✅ خطوة 4: مستمع التزامن الفوري مع الأجهزة الأخرى
+    const docRef = doc(db,'users',currentUserId,'data','appData');
+    unsubscribeSnapshot = onSnapshot(docRef, snap => {
+      if (!snap.exists() || isSyncing) return;
+      const newData = snap.data();
+      if (JSON.stringify(newData.sections) !== JSON.stringify(state.sections)) {
+        applyPayload(newData); saveLocalCache(currentUserId);
+        renderSidebar(); renderMain();
         setSyncStatus(false,'تم التحديث من جهاز آخر ✓');
       }
     });
   } else {
-    // ✅ تنظيف كامل عند تسجيل الخروج
-    currentUserId=null; state.currentUser=null;
-    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot=null; }
-    state.sections=[]; state.activeId=null;
+    // ✅ تنظيف كامل عند تسجيل الخروج — لا نحذف الكاش (للدخول السريع لاحقاً)
+    currentUserId = null; state.currentUser = null;
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    state.sections = []; state.activeId = null;
     renderSidebar(); renderMain(); renderAuthArea();
     openAuthGate('choose');
   }
