@@ -159,22 +159,22 @@ function openSectionContextMenu(e, secId) {
 
 // ===================== Payload / Cloud =====================
 function currentPayload() {
+  // ✅ نحفظ فقط البيانات الحقيقية: الأقسام + المظهر
   return {
-    sections: state.sections, activeId: state.activeId,
-    selectedOp: state.selectedOp, theme: state.theme,
-    sidebarOpen: state.sidebarOpen, sectionsSortBy: state.sectionsSortBy,
-    recordsSortBy: state.recordsSortBy, focusMode: state.focusMode,
+    sections: state.sections,
+    theme: state.theme,
   };
 }
 function applyPayload(payload={}) {
-  state.sections   = Array.isArray(payload.sections) ? payload.sections : [];
-  state.activeId   = payload.activeId || state.sections[0]?.id || null;
-  state.selectedOp = payload.selectedOp || '+';
-  state.theme      = payload.theme || 'dark';
-  state.sidebarOpen= payload.sidebarOpen !== undefined ? !!payload.sidebarOpen : true;
-  state.sectionsSortBy = payload.sectionsSortBy || 'name-asc';
-  state.recordsSortBy  = payload.recordsSortBy  || 'date-desc';
-  state.focusMode  = payload.focusMode === true;
+  state.sections = Array.isArray(payload.sections) ? payload.sections : [];
+  state.theme    = payload.theme || 'dark';
+  // ✅ حالات UI تبقى محلية ولا تُستعاد من السحابة
+  state.activeId      = state.sections[0]?.id || null;
+  state.selectedOp    = '+';
+  state.sidebarOpen   = window.innerWidth >= 700;
+  state.sectionsSortBy = 'name-asc';
+  state.recordsSortBy  = 'date-desc';
+  state.focusMode     = false;
   applyTheme();
 }
 async function saveToCloud() {
@@ -200,9 +200,7 @@ async function loadFromCloud(userId) {
       applyPayload(snap.data());
     } else {
       // حساب جديد: ابدأ بقائمة فارغة نظيفة
-      applyPayload({ sections:[], activeId:null, selectedOp:'+',
-        theme: state.theme||'dark', sidebarOpen:true,
-        sectionsSortBy:'name-asc', recordsSortBy:'date-desc', focusMode:false });
+      applyPayload({ sections:[], theme: state.theme||'dark' });
     }
     renderSidebar(); renderMain();
     setSyncStatus(false,'متزامن');
@@ -325,8 +323,7 @@ async function submitRegister() {
     const batch = writeBatch(db);
     batch.set(doc(db,'users',newUid), { username, displayName, email });
     batch.set(doc(db,'users',newUid,'data','appData'), {
-      sections:[], activeId:null, selectedOp:'+', theme: state.theme||'dark',
-      sidebarOpen:true, sectionsSortBy:'name-asc', recordsSortBy:'date-desc', focusMode:false
+      sections:[], theme: state.theme||'dark'
     });
     await batch.commit();
     // onAuthStateChanged سيتولى الباقي تلقائياً
@@ -498,7 +495,7 @@ function sortRecords(records,sortBy) {
   };
   return [...pinned,...unpinned.sort(fn)];
 }
-function setRecordsSort(sortBy) { state.recordsSortBy=sortBy; saveToCloud(); renderMain(); }
+function setRecordsSort(sortBy) { state.recordsSortBy=sortBy; renderMain(); }
 function sortSections(sections,sortBy) {
   const s=[...sections];
   if(sortBy==='name-asc')   s.sort((a,b)=>a.name.localeCompare(b.name));
@@ -506,7 +503,7 @@ function sortSections(sections,sortBy) {
   else if(sortBy==='count-desc') s.sort((a,b)=>(b.records?.length||0)-(a.records?.length||0));
   return s;
 }
-function toggleFocusMode() { state.focusMode=!state.focusMode; saveToCloud(); renderMain(); }
+function toggleFocusMode() { state.focusMode=!state.focusMode; renderMain(); }
 
 // ===================== أقسام =====================
 function openSectionModal(sectionId) {
@@ -923,7 +920,7 @@ function initEventListeners() {
     toast(state.theme==='light'?'☀️ المظهر الفاتح':'🌙 المظهر الداكن');
   });
   $('sidebarToggle')?.addEventListener('click',()=>{
-    state.sidebarOpen=!state.sidebarOpen; $('sidebar')?.classList.toggle('collapsed',!state.sidebarOpen); saveToCloud();
+    state.sidebarOpen=!state.sidebarOpen; $('sidebar')?.classList.toggle('collapsed',!state.sidebarOpen);
   });
   $('searchToggleBtn')?.addEventListener('click',()=>{
     if (!sectionById(state.activeId)) return toast('اختر قسماً أولاً','error');
@@ -1017,8 +1014,8 @@ onAuthStateChanged(auth, async(user)=>{
     unsubscribeSnapshot=onSnapshot(docRef,snap=>{
       if (!snap.exists()||isSyncing) return;
       const newData=snap.data();
-      // مقارنة دقيقة للأقسام فقط لتجنب التحديثات غير الضرورية
-      if (JSON.stringify(newData.sections)!==JSON.stringify(state.sections)) {
+      // مقارنة البيانات المحفوظة فقط (الأقسام + المظهر)
+      if (JSON.stringify(newData.sections)!==JSON.stringify(state.sections) || newData.theme!==state.theme) {
         applyPayload(newData); renderSidebar(); renderMain();
         setSyncStatus(false,'تم التحديث من جهاز آخر ✓');
       }
