@@ -1,13 +1,24 @@
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as firebaseSignOut, onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, deleteDoc, query, collection, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+// ===================== التكامل مع تليجرام Web App =====================
+let tg = null;
+let tgUser = null;
+let isTelegramWebApp = false;
 
-const { auth, db } = window.__firebase;
+try {
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+        tg.expand();
+        tgUser = tg.initDataUnsafe?.user;
+        if (tgUser && tgUser.id) {
+            isTelegramWebApp = true;
+            console.log('Telegram user:', tgUser);
+        }
+    }
+} catch(e) { console.warn(e); }
 
 // ===================== ثوابت =====================
 const COLORS = ['#f5c842','#f5904a','#f76e6e','#3ddba8','#5b9cf6','#b07ef8','#f472b6','#3dd6f5','#a3e635','#fb923c'];
 const ICONS  = ['🛒','💼','🏠','✈️','🍔','💊','📚','⛽','🎮','💡','🎁','💰','🏋️','🧾','🔧','📱','🎓','🌿','🎵','🚗'];
 const STORAGE_THEME = 'hassab_theme_v5';
-const STORAGE_CACHE = 'hassab_cache_v5'; // كاش البيانات لكل مستخدم
 
 // ===================== الحالة =====================
 let state = {
@@ -19,10 +30,7 @@ let state = {
   focusMode: false, _modalColor: null, _modalIcon: null, currentUser: null,
 };
 
-let currentUserId = null;
-let unsubscribeSnapshot = null;
-let isSyncing = false;
-let usernameCheckTimeout = null;
+let currentTelegramUserId = null;
 
 // ===================== مساعدات =====================
 const $ = id => document.getElementById(id);
@@ -88,7 +96,7 @@ function toast(msg, type='') {
 function setSyncStatus(syncing, text) {
   const dot = $('syncDot'), txt = $('syncText');
   if (dot) dot.classList.toggle('syncing', syncing);
-  if (txt) txt.textContent = text || (syncing ? 'جارِ المزامنة...' : 'متزامن');
+  if (txt) txt.textContent = text || (syncing ? 'جارِ الحفظ...' : 'محلي');
 }
 function shake(el) {
   if (!el) return;
@@ -96,7 +104,36 @@ function shake(el) {
   setTimeout(() => { el.style.borderColor=''; el.style.boxShadow=''; }, 700);
 }
 
-// ===================== كود القسم (نسخ/استيراد) =====================
+// ===================== التخزين المحلي (بدون سحابة) =====================
+function saveToLocal() {
+  if (!currentTelegramUserId) return;
+  const key = `hassab_tg_${currentTelegramUserId}`;
+  const data = { sections: state.sections, version: 1 };
+  localStorage.setItem(key, JSON.stringify(data));
+  setSyncStatus(false, 'تم الحفظ');
+}
+function loadFromLocal(userId) {
+  const key = `hassab_tg_${userId}`;
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    try {
+      const data = JSON.parse(raw);
+      if (data.sections) state.sections = data.sections;
+    } catch(e) { console.warn(e); }
+  } else {
+    state.sections = [];
+  }
+  state.activeId = state.sections[0]?.id || null;
+  state.selectedOp = '+';
+  state.sidebarOpen = window.innerWidth >= 700;
+  state.sectionsSortBy = 'name-asc';
+  state.recordsSortBy = 'date-desc';
+  state.focusMode = false;
+  applyTheme();
+  renderSidebar(); renderMain();
+}
+
+// ===================== كود القسم =====================
 function encodeSectionCode(sec) {
   try {
     const payload = {
@@ -128,7 +165,9 @@ function importSectionFromCode(code) {
   };
   state.sections.push(newSec);
   state.activeId = newSec.id;
-  saveToCloud().then(() => { renderSidebar(); renderMain(); toast(`✅ تم استيراد قسم "${newSec.name}"`); });
+  saveToLocal();
+  renderSidebar(); renderMain();
+  toast(`✅ تم استيراد قسم "${newSec.name}"`);
   return true;
 }
 function showSectionCode(secId) {
@@ -158,265 +197,6 @@ function openSectionContextMenu(e, secId) {
   setTimeout(() => document.addEventListener('click', onOut), 10);
 }
 
-// ===================== Payload / Cloud =====================
-function currentPayload() {
-  // ✅ نحفظ فقط الأقسام — المظهر محلي بالكامل ولا يُرفع للسحابة
-  return { sections: state.sections };
-}
-function applyPayload(payload={}) {
-  state.sections = Array.isArray(payload.sections) ? payload.sections : [];
-  // ✅ المظهر لا يُستعاد من السحابة أبداً — يبقى كما اختاره المستخدم محلياً
-  state.activeId      = state.sections[0]?.id || null;
-  state.selectedOp    = '+';
-  state.sidebarOpen   = window.innerWidth >= 700;
-  state.sectionsSortBy = 'name-asc';
-  state.recordsSortBy  = 'date-desc';
-  state.focusMode     = false;
-  applyTheme();
-}
-// ✅ حفظ كاش محلي لكل مستخدم — يتيح العرض الفوري عند الدخول
-function saveLocalCache(userId) {
-  if (!userId) return;
-  try { localStorage.setItem(`${STORAGE_CACHE}_${userId}`, JSON.stringify({ sections: state.sections, ts: Date.now() })); } catch {}
-}
-function loadLocalCache(userId) {
-  try { return JSON.parse(localStorage.getItem(`${STORAGE_CACHE}_${userId}`)||'null'); } catch { return null; }
-}
-function clearLocalCache(userId) {
-  if (userId) try { localStorage.removeItem(`${STORAGE_CACHE}_${userId}`); } catch {}
-}
-async function saveToCloud() {
-  if (!currentUserId || isSyncing) return;
-  isSyncing = true;
-  try {
-    setSyncStatus(true, 'جاري الحفظ...');
-    await setDoc(doc(db,'users',currentUserId,'data','appData'), currentPayload());
-    saveLocalCache(currentUserId); // ✅ حدّث الكاش المحلي بعد كل حفظ ناجح
-    setSyncStatus(false, 'تم الحفظ ✓');
-  } catch(err) {
-    console.error(err); setSyncStatus(false,'خطأ');
-    toast('فشل الحفظ — تحقق من الاتصال','error');
-  } finally { isSyncing = false; }
-}
-async function loadFromCloud(userId) {
-  if (isSyncing) return;
-  isSyncing = true;
-  setSyncStatus(true,'جاري التحميل...');
-  try {
-    const snap = await getDoc(doc(db,'users',userId,'data','appData'));
-    if (snap.exists()) {
-      applyPayload(snap.data());
-    } else {
-      applyPayload({ sections:[] });
-    }
-    saveLocalCache(userId); // ✅ حدّث الكاش بعد التحميل من السحابة
-    renderSidebar(); renderMain();
-    setSyncStatus(false,'متزامن');
-  } catch(err) {
-    console.error(err); setSyncStatus(false,'خطأ');
-    toast('فشل تحميل البيانات — تحقق من الاتصال','error');
-  } finally { isSyncing = false; }
-}
-
-// ===================== المصادقة =====================
-function closeAuthGate() { $('authGate')?.classList.add('modal-hidden'); }
-function openAuthGate(mode='choose') {
-  state.authGateMode = mode; renderAuthGate();
-  $('authGate')?.classList.remove('modal-hidden');
-  closeRecordSearch(); closeAuthMenu();
-}
-function renderAuthGate() {
-  const host=$('authGateBody'), title=$('authGateTitle');
-  if (!host||!title) return;
-  if (state.authGateMode==='register') {
-    title.textContent='إنشاء حساب';
-    host.innerHTML=`<div class="auth-card">
-      <label class="field-label">اسم المستخدم <span style="color:var(--red)">(فريد)</span></label>
-      <div style="position:relative">
-        <input class="field-input" id="authRegUsername" maxlength="30" placeholder="مثال: john_doe" autocomplete="off"/>
-        <span id="regUsernameStatus" class="username-status"></span>
-      </div>
-      <label class="field-label" style="margin-top:12px">البريد الإلكتروني</label>
-      <div style="position:relative">
-        <input class="field-input" id="authRegUser" type="email" placeholder="example@mail.com"/>
-        <span id="regEmailStatus" class="username-status"></span>
-      </div>
-      <label class="field-label" style="margin-top:12px">اسم العرض</label>
-      <input class="field-input" id="authRegDisplayName" maxlength="30" placeholder="الاسم الذي يظهر"/>
-      <label class="field-label" style="margin-top:12px">كلمة المرور</label>
-      <input class="field-input" id="authRegPass" type="password" placeholder="6+ أحرف"/>
-      <label class="field-label" style="margin-top:12px">تأكيد كلمة المرور</label>
-      <input class="field-input" id="authRegPass2" type="password" placeholder="أعد كتابة كلمة المرور"/>
-      <div class="auth-rules">كلمة المرور: 6 أحرف على الأقل.</div>
-      <div class="modal-actions auth-actions">
-        <button class="btn-ghost" id="authBackBtn">رجوع</button>
-        <button class="btn-primary" id="authCreateBtn">إنشاء الحساب</button>
-      </div></div>`;
-    $('authBackBtn').onclick = () => openAuthGate('choose');
-    $('authCreateBtn').onclick = submitRegister;
-    const uIn=$('authRegUsername'), eIn=$('authRegUser');
-    uIn?.addEventListener('input',()=>checkUsernameAvailability(uIn.value,'regUsernameStatus'));
-    eIn?.addEventListener('input',()=>checkEmailAvailability(eIn.value,'regEmailStatus'));
-    ['authRegUser','authRegPass','authRegPass2','authRegDisplayName','authRegUsername'].forEach(id=>{
-      $(id)?.addEventListener('keydown',e=>{ if(e.key==='Enter') submitRegister(); });
-    });
-    return;
-  }
-  if (state.authGateMode==='login') {
-    title.textContent='تسجيل الدخول';
-    host.innerHTML=`<div class="auth-card">
-      <label class="field-label">البريد الإلكتروني أو اسم المستخدم</label>
-      <input class="field-input" id="authLoginId" placeholder="example@mail.com أو اسم المستخدم" autocomplete="off"/>
-      <label class="field-label" style="margin-top:12px">كلمة المرور</label>
-      <input class="field-input" id="authLoginPass" type="password" placeholder="كلمة المرور"/>
-      <div class="modal-actions auth-actions">
-        <button class="btn-ghost" id="authBackBtn">رجوع</button>
-        <button class="btn-primary" id="authLoginBtn">دخول</button>
-      </div></div>`;
-    $('authBackBtn').onclick = () => openAuthGate('choose');
-    $('authLoginBtn').onclick = submitLogin;
-    $('authLoginId')?.addEventListener('keydown',e=>{ if(e.key==='Enter') $('authLoginPass').focus(); });
-    $('authLoginPass')?.addEventListener('keydown',e=>{ if(e.key==='Enter') submitLogin(); });
-    return;
-  }
-  title.textContent='مرحبًا بك';
-  host.innerHTML=`<div class="auth-card auth-chooser">
-    <button class="auth-choice-btn primary" id="showRegisterBtn">إنشاء حساب جديد</button>
-    <button class="auth-choice-btn" id="showLoginBtn">تسجيل الدخول لحساب موجود</button>
-  </div>`;
-  $('showRegisterBtn').onclick = () => openAuthGate('register');
-  $('showLoginBtn').onclick    = () => openAuthGate('login');
-}
-async function checkUsernameAvailability(username, statusId) {
-  const el=$(statusId);
-  if (!username||username.length<3) { if(el) el.innerHTML=''; return false; }
-  try {
-    const snap = await getDocs(query(collection(db,'users'), where('username','==',username.toLowerCase())));
-    const ok = snap.empty;
-    if (el) { el.innerHTML = ok?'✓':'✗'; el.className = `username-status ${ok?'valid':'invalid'}`; }
-    return ok;
-  } catch { return false; }
-}
-async function checkEmailAvailability(email, statusId) {
-  const el=$(statusId);
-  if (!email||!email.includes('@')) { if(el) el.innerHTML=''; return false; }
-  try {
-    const snap = await getDocs(query(collection(db,'users'), where('email','==',email)));
-    const ok = snap.empty;
-    if (el) { el.innerHTML = ok?'✓':'✗'; el.className = `username-status ${ok?'valid':'invalid'}`; }
-    return ok;
-  } catch { return false; }
-}
-
-async function submitRegister() {
-  const username    = $('authRegUsername')?.value.trim().toLowerCase();
-  const email       = $('authRegUser')?.value.trim();
-  const displayName = $('authRegDisplayName')?.value.trim();
-  const password    = $('authRegPass')?.value;
-  const confirm     = $('authRegPass2')?.value;
-  if (!username)              return toast('أدخل اسم المستخدم','error');
-  if (!email)                 return toast('أدخل البريد الإلكتروني','error');
-  if (!displayName)           return toast('أدخل اسم العرض','error');
-  if (!password)              return toast('أدخل كلمة المرور','error');
-  if (password!==confirm)     return toast('كلمتا المرور غير متطابقتين','error');
-  if (password.length<6)      return toast('كلمة المرور قصيرة جدًا (6+ أحرف)','error');
-  if (!await checkUsernameAvailability(username,'regUsernameStatus')) return toast('اسم المستخدم موجود مسبقاً','error');
-  if (!await checkEmailAvailability(email,'regEmailStatus'))          return toast('البريد الإلكتروني موجود مسبقاً','error');
-  try {
-    $('authCreateBtn').disabled = true;
-    $('authCreateBtn').textContent = 'جارِ الإنشاء...';
-    const userCred = await createUserWithEmailAndPassword(auth, email, password);
-    const newUid = userCred.user.uid;
-    // --- الحل الجذري: حفظ كلا المستندين بـ batch قبل أن يُفعَّل onAuthStateChanged ---
-    const batch = writeBatch(db);
-    batch.set(doc(db,'users',newUid), { username, displayName, email });
-    batch.set(doc(db,'users',newUid,'data','appData'), { sections:[] });
-    await batch.commit();
-    // onAuthStateChanged سيتولى الباقي تلقائياً
-    toast(`مرحبًا ${displayName} 🎉`);
-  } catch(err) {
-    console.error(err);
-    let msg = err.message;
-    if (msg.includes('email-already-in-use')) msg='البريد مستخدم بالفعل';
-    toast(msg,'error');
-    const btn=$('authCreateBtn');
-    if (btn) { btn.disabled=false; btn.textContent='إنشاء الحساب'; }
-  }
-}
-
-async function submitLogin() {
-  const loginId  = $('authLoginId')?.value.trim().toLowerCase();
-  const password = $('authLoginPass')?.value;
-  if (!loginId||!password) return toast('أدخل البريد/اسم المستخدم وكلمة المرور','error');
-  let email = loginId;
-  if (!loginId.includes('@')) {
-    const snap = await getDocs(query(collection(db,'users'), where('username','==',loginId)));
-    if (snap.empty) return toast('اسم المستخدم غير موجود','error');
-    email = snap.docs[0].data().email;
-  }
-  try {
-    $('authLoginBtn').disabled=true; $('authLoginBtn').textContent='جارِ الدخول...';
-    await signInWithEmailAndPassword(auth, email, password);
-    // ✅ onAuthStateChanged يتولى كل شيء — لا نستدعي loadFromCloud هنا أبداً
-  } catch(err) {
-    console.error(err);
-    toast('البريد/اسم المستخدم أو كلمة المرور غير صحيحة','error');
-    const btn=$('authLoginBtn');
-    if(btn){ btn.disabled=false; btn.textContent='دخول'; }
-  }
-}
-
-function signOutApp() {
-  firebaseSignOut(auth).then(()=>{
-    // onAuthStateChanged (else branch) يُنظّف كل شيء تلقائياً
-    toast('تم تسجيل الخروج');
-  }).catch(err=>toast(err.message,'error'));
-}
-
-// ===================== حذف الحساب =====================
-async function deleteAccountPermanently() {
-  if (!currentUserId) return;
-  const user = auth.currentUser; if (!user) return;
-  try {
-    setSyncStatus(true,'جاري حذف الحساب...');
-    await deleteDoc(doc(db,'users',currentUserId,'data','appData'));
-    await deleteDoc(doc(db,'users',currentUserId));
-    await deleteUser(user);
-    toast('تم حذف الحساب نهائياً');
-  } catch(err) {
-    console.error(err); toast('فشل حذف الحساب: '+err.message,'error');
-    setSyncStatus(false,'خطأ');
-  }
-}
-
-// ===================== ثيم =====================
-function applyTheme() {
-  // ✅ المظهر محلي بالكامل — يُحفظ دائماً في localStorage بغض النظر عن الحساب
-  localStorage.setItem(STORAGE_THEME, state.theme);
-  document.body.classList.toggle('light', state.theme==='light');
-  const icon=$('themeIcon'); if (!icon) return;
-  if (state.theme==='light') {
-    icon.innerHTML=`<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
-  } else {
-    icon.innerHTML=`<circle cx="12" cy="12" r="5"/>
-      <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-      <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
-  }
-}
-
-// ===================== بحث / تمرير =====================
-function closeRecordSearch() {
-  state.recordSearchOpen=false; state.searchQuery='';
-  $('searchBar')?.classList.remove('open');
-  const inp=$('searchInput'); if(inp) inp.value='';
-}
-function openRecordSearch() {
-  if (!sectionById(state.activeId)) return toast('اختر قسماً أولاً','error');
-  state.recordSearchOpen=true; $('searchBar')?.classList.add('open'); $('searchInput')?.focus();
-}
-
 // ===================== عمليات =====================
 function addRecord() {
   const sec=sectionById(state.activeId); if (!sec) return;
@@ -425,22 +205,30 @@ function addRecord() {
   const label=$('recLabel').value.trim(), note=$('recNote').value.trim();
   sec.records.push({ id:uid(), op:state.selectedOp, num, label, note, ts:Date.now(), pinned:false });
   $('recNum').value=''; $('recLabel').value=''; $('recNote').value=''; $('recNum').focus();
-  saveToCloud().then(()=>{ renderSidebar(); renderMain(); toast(`${state.selectedOp} ${formatNumber(num)}${label?' ('+label+')':''} ✓`); });
+  saveToLocal();
+  renderSidebar(); renderMain();
+  toast(`${state.selectedOp} ${formatNumber(num)}${label?' ('+label+')':''} ✓`);
 }
 function deleteRecord(secId,recId) {
   const sec=sectionById(secId); if (!sec) return;
   sec.records=sec.records.filter(r=>r.id!==recId);
-  saveToCloud().then(()=>{ renderSidebar(); renderMain(); toast('🗑 تم حذف العملية'); });
+  saveToLocal();
+  renderSidebar(); renderMain();
+  toast('🗑 تم حذف العملية');
 }
 function togglePin(secId,recId) {
   const sec=sectionById(secId), rec=sec?.records.find(r=>r.id===recId); if (!rec) return;
   rec.pinned=!rec.pinned;
-  saveToCloud().then(()=>{ renderMain(); toast(rec.pinned?'📌 تم تثبيت العملية':'📌 تم إلغاء التثبيت'); });
+  saveToLocal();
+  renderMain();
+  toast(rec.pinned?'📌 تم تثبيت العملية':'📌 تم إلغاء التثبيت');
 }
 function togglePinSection(secId) {
   const sec=sectionById(secId); if (!sec) return;
   sec.pinned=!sec.pinned;
-  saveToCloud().then(()=>{ renderSidebar(); toast(sec.pinned?'📌 تم تثبيت القسم':'📌 تم إلغاء تثبيت القسم'); });
+  saveToLocal();
+  renderSidebar();
+  toast(sec.pinned?'📌 تم تثبيت القسم':'📌 تم إلغاء تثبيت القسم');
 }
 function openEditModal(secId,recId) {
   const sec=sectionById(secId), rec=sec?.records.find(r=>r.id===recId); if (!rec) return;
@@ -459,7 +247,9 @@ function saveEditModal() {
   rec.op=$('editOp').value; rec.num=num;
   rec.label=$('editLabel').value.trim(); rec.note=$('editNote').value.trim();
   $('editModal')?.classList.add('modal-hidden');
-  saveToCloud().then(()=>{ renderSidebar(); renderMain(); toast('✅ تم حفظ التعديل'); });
+  saveToLocal();
+  renderSidebar(); renderMain();
+  toast('✅ تم حفظ التعديل');
 }
 function confirmClearAll(secId) {
   const sec=sectionById(secId); if (!sec) return;
@@ -480,7 +270,8 @@ function applyDelete() {
   }
   state.pendingDelete=null;
   $('confirmModal')?.classList.add('modal-hidden');
-  saveToCloud().then(()=>{ renderSidebar(); renderMain(); });
+  saveToLocal();
+  renderSidebar(); renderMain();
 }
 function confirmDeleteSection(id) {
   const sec=sectionById(id); if (!sec) return;
@@ -556,67 +347,8 @@ function saveSectionModal() {
     state.sections.push(sec); state.activeId=sec.id; toast('✅ تم إنشاء القسم');
   }
   $('sectionModal')?.classList.add('modal-hidden');
-  saveToCloud().then(()=>{ renderSidebar(); renderMain(); });
-}
-
-// ===================== تعديل الحساب =====================
-async function openEditAccountModal() {
-  if (!currentUserId) return;
-  const userDoc=await getDoc(doc(db,'users',currentUserId));
-  const ud=userDoc.data()||{};
-  $('currentPassword').value=''; $('editDisplayName').value=ud.displayName||'';
-  $('editUsername').value=ud.username||''; $('editNewPassword').value=''; $('editConfirmPassword').value='';
-  const st=$('usernameStatus'); if(st){st.innerHTML='';st.className='username-status';}
-  $('editAccountModal')?.classList.remove('modal-hidden');
-  const uIn=$('editUsername');
-  if (!uIn?.getAttribute('data-listener')) {
-    uIn?.addEventListener('input',()=>{
-      const v=uIn.value.trim().toLowerCase();
-      if(!v||v===ud.username){if(st)st.innerHTML='';return;}
-      clearTimeout(usernameCheckTimeout);
-      usernameCheckTimeout=setTimeout(()=>checkUsernameAvailability(v,'usernameStatus'),500);
-    });
-    uIn?.setAttribute('data-listener','true');
-  }
-}
-async function saveAccountChanges() {
-  if (!currentUserId) return;
-  const currentPass=$('currentPassword').value; if (!currentPass) return toast('أدخل كلمة المرور الحالية','error');
-  const newDisplayName=$('editDisplayName').value.trim();
-  const newUsername=$('editUsername').value.trim().toLowerCase();
-  const newPassword=$('editNewPassword').value;
-  const confirmPassword=$('editConfirmPassword').value;
-  const user=auth.currentUser; if (!user) return toast('يجب تسجيل الدخول أولاً','error');
-  try {
-    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email,currentPass));
-  } catch { return toast('كلمة المرور الحالية غير صحيحة','error'); }
-  const updates={}; let usernameChanged=false;
-  if (newDisplayName&&newDisplayName!==state.currentUser?.displayName) updates.displayName=newDisplayName;
-  if (newUsername) {
-    const ud=(await getDoc(doc(db,'users',currentUserId))).data();
-    if (newUsername!==ud?.username) {
-      const snap=await getDocs(query(collection(db,'users'),where('username','==',newUsername)));
-      if (!snap.empty&&snap.docs[0].id!==currentUserId) return toast('اسم المستخدم موجود مسبقاً','error');
-      updates.username=newUsername; usernameChanged=true;
-    }
-  }
-  if (Object.keys(updates).length) { await setDoc(doc(db,'users',currentUserId),updates,{merge:true}); toast('✅ تم تحديث البيانات'); }
-  let passwordChanged=false;
-  if (newPassword) {
-    if(newPassword!==confirmPassword) return toast('كلمتا المرور غير متطابقتين','error');
-    if(newPassword.length<6) return toast('كلمة المرور قصيرة جدًا','error');
-    await updatePassword(user,newPassword); passwordChanged=true;
-    toast('✅ تم تغيير كلمة المرور');
-  }
-  $('editAccountModal')?.classList.add('modal-hidden');
-  if (passwordChanged||usernameChanged) {
-    await firebaseSignOut(auth); // onAuthStateChanged (else) يُنظّف
-    toast(passwordChanged?'تم تسجيل الخروج بسبب تغيير كلمة المرور':'تم تسجيل الخروج بسبب تغيير اسم المستخدم');
-  } else {
-    const ud=(await getDoc(doc(db,'users',currentUserId))).data();
-    state.currentUser={email:user.email, displayName:ud?.displayName||user.email};
-    renderAuthArea();
-  }
+  saveToLocal();
+  renderSidebar(); renderMain();
 }
 
 // ===================== تصدير =====================
@@ -657,27 +389,23 @@ function openDeleteAccountConfirm() { $('deleteAccountConfirmModal')?.classList.
 
 function renderAuthArea() {
   const area=$('authArea'); if (!area) return;
-  if (!state.currentUser) {
-    area.innerHTML=`<button class="auth-open-btn" id="openAuthBtn">الحساب</button>`;
-    $('openAuthBtn').onclick=()=>openAuthGate('choose'); return;
-  }
-  const displayName=state.currentUser.displayName||state.currentUser.email||'مستخدم';
-  const email=state.currentUser.email||'';
-  area.innerHTML=`
-    <button class="auth-user-btn" id="authUserBtn">
-      <div class="auth-avatar-placeholder">${escHtml(displayName.slice(0,1).toUpperCase())}</div>
-      <span class="auth-name">${escHtml(displayName)}</span>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-      <div class="auth-dropdown modal-hidden" id="authDropdown">
-        <div class="auth-dd-info">
-          <div class="auth-dd-name">${escHtml(displayName)}</div>
-          <div class="auth-dd-username">${escHtml(email)}</div>
-        </div>
+  if (isTelegramWebApp && tgUser) {
+    const name = tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '');
+    area.innerHTML = `
+      <div class="auth-user-btn" style="cursor:default">
+        <div class="auth-avatar-placeholder">${tgUser.first_name?.charAt(0) || '👤'}</div>
+        <span class="auth-name">${escHtml(name)}</span>
+        <span style="font-size:10px;color:var(--text3)">(تليجرام)</span>
       </div>
-    </button>`;
-  $('authUserBtn').onclick=e=>{ e.stopPropagation(); state.authMenuOpen=!state.authMenuOpen; $('authDropdown')?.classList.toggle('modal-hidden',!state.authMenuOpen); };
+    `;
+  } else {
+    area.innerHTML = `<button class="auth-open-btn" id="openAuthMsg">⚠️ افتح من بوت تليجرام</button>`;
+    $('#openAuthMsg')?.addEventListener('click', () => toast('الرجاء فتح هذا الموقع من زر داخل بوت حسّاب على تليجرام', 'error'));
+  }
 }
-document.addEventListener('click',e=>{ if (!e.target.closest('#authArea')) closeAuthMenu(); });
+
+function closeAuthGate() { $('authGate')?.classList.add('modal-hidden'); }
+function openAuthGate() {} // لا نستخدمها
 
 function renderSidebar() {
   const list=$('sectionsList'); if (!list) return;
@@ -702,12 +430,10 @@ function renderSidebar() {
           <div class="sec-name">${escHtml(s.name)}</div>
           <div class="sec-meta">${formatNumber(total)}${s.unit?' '+escHtml(s.unit):''} · ${formatNumber((s.records||[]).length)} عملية</div>
         </div>`;
-      // Long-press للهاتف
       let pressTimer;
       div.addEventListener('touchstart',e=>{ pressTimer=setTimeout(()=>openSectionContextMenu(e,s.id),500); },{passive:true});
       div.addEventListener('touchend',()=>clearTimeout(pressTimer));
       div.addEventListener('touchmove',()=>clearTimeout(pressTimer));
-      // Right-click للحاسوب
       div.addEventListener('contextmenu',e=>openSectionContextMenu(e,s.id));
       div.onclick=()=>{ state.activeId=s.id; closeRecordSearch(); renderSidebar(); renderMain(); };
       list.appendChild(div);
@@ -780,7 +506,7 @@ function renderRecords(sec) {
         <div class="rec-op-badge ${opClass(isFirst?'+':r.op)}">${isFirst?'①':r.op}</div>
         <div class="rec-body">
           <div class="rec-main-line"><span class="rec-num">${formatNumber(r.num)}</span>${r.label?`<span class="rec-label-text">${lbl}</span>`:''}</div>
-          ${r.note?`<div class="rec-note">📝 ${escHtml(r.note)}</div>`:''}
+          ${r.note?`<div class="rec-note">?? ${escHtml(r.note)}</div>`:''}
           <div class="rec-running">= <span>${formatNumber(running)}${sec.unit?' '+escHtml(sec.unit):''}</span></div>
           <div class="rec-timestamp">${fmtDate(r.ts)}</div>
         </div></div>`;
@@ -832,7 +558,7 @@ function initDragAndDrop(sectionId) {
       const di=sec.records.findIndex(r=>r.id===card.dataset.recId);
       if (si===-1||di===-1) return;
       const [moved]=sec.records.splice(si,1); sec.records.splice(di,0,moved);
-      saveToCloud().then(()=>renderMain()); toast('تم إعادة ترتيب العمليات');
+      saveToLocal(); renderMain(); toast('تم إعادة ترتيب العمليات');
     });
   });
 }
@@ -921,10 +647,36 @@ function renderMain() {
   renderTotalCard(sec); renderRecords(sec); initDragAndDrop(sec.id);
 }
 
+function closeRecordSearch() {
+  state.recordSearchOpen=false; state.searchQuery='';
+  $('searchBar')?.classList.remove('open');
+  const inp=$('searchInput'); if(inp) inp.value='';
+}
+function openRecordSearch() {
+  if (!sectionById(state.activeId)) return toast('اختر قسماً أولاً','error');
+  state.recordSearchOpen=true; $('searchBar')?.classList.add('open'); $('searchInput')?.focus();
+}
+
+// ===================== الثيم =====================
+function applyTheme() {
+  localStorage.setItem(STORAGE_THEME, state.theme);
+  document.body.classList.toggle('light', state.theme==='light');
+  const icon=$('themeIcon'); if (!icon) return;
+  if (state.theme==='light') {
+    icon.innerHTML=`<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+  } else {
+    icon.innerHTML=`<circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+  }
+}
+
 // ===================== مستمعات الأحداث =====================
 function initEventListeners() {
   $('themeToggleBtn')?.addEventListener('click',()=>{
-    state.theme=state.theme==='dark'?'light':'dark'; applyTheme(); saveToCloud();
+    state.theme=state.theme==='dark'?'light':'dark'; applyTheme(); saveToLocal();
     toast(state.theme==='light'?'☀️ المظهر الفاتح':'🌙 المظهر الداكن');
   });
   $('sidebarToggle')?.addEventListener('click',()=>{
@@ -938,7 +690,6 @@ function initEventListeners() {
   $('clearSearch')?.addEventListener('click',()=>{ closeRecordSearch(); renderMain(); });
   $('sectionSearchInput')?.addEventListener('input',e=>{ state.sectionSearchQuery=e.target.value.trim().toLowerCase(); renderSidebar(); });
   $('newSectionBtn')?.addEventListener('click',()=>openSectionModal(null));
-  // زر استيراد قسم
   $('importSectionBtn')?.addEventListener('click',()=>{
     $('importCodeInput').value=''; $('importSectionModal')?.classList.remove('modal-hidden');
     setTimeout(()=>$('importCodeInput')?.focus(),100);
@@ -952,7 +703,6 @@ function initEventListeners() {
     const code=$('sectionCodeText')?.value; if (!code) return;
     navigator.clipboard.writeText(code).then(()=>toast('📋 تم نسخ الكود')).catch(()=>{ $('sectionCodeText').select(); document.execCommand('copy'); toast('📋 تم نسخ الكود'); });
   });
-  // قائمة سياق الأقسام
   $('sctxPin')?.addEventListener('click',()=>{ const id=$('sectionContextMenu')?.dataset.secId; if(id) togglePinSection(id); $('sectionContextMenu')?.classList.add('modal-hidden'); });
   $('sctxEdit')?.addEventListener('click',()=>{ const id=$('sectionContextMenu')?.dataset.secId; if(id) openSectionModal(id); $('sectionContextMenu')?.classList.add('modal-hidden'); });
   $('sctxCode')?.addEventListener('click',()=>{ const id=$('sectionContextMenu')?.dataset.secId; if(id) showSectionCode(id); $('sectionContextMenu')?.classList.add('modal-hidden'); });
@@ -961,15 +711,23 @@ function initEventListeners() {
   $('sectionNameInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter') saveSectionModal(); });
   $('saveEditBtn')?.addEventListener('click',saveEditModal);
   $('confirmOkBtn')?.addEventListener('click',applyDelete);
-  $('confirmLogoutBtn')?.addEventListener('click',()=>{ closeLogoutConfirm(); signOutApp(); });
+  $('confirmLogoutBtn')?.addEventListener('click',()=>{ closeLogoutConfirm(); });
   $('cancelLogoutBtn')?.addEventListener('click',closeLogoutConfirm);
   $('settingsBtn')?.addEventListener('click',()=>$('settingsModal')?.classList.remove('modal-hidden'));
-  $('editAccountBtn')?.addEventListener('click',()=>{ $('settingsModal')?.classList.add('modal-hidden'); openEditAccountModal(); });
-  $('logoutSettingsBtn')?.addEventListener('click',()=>{ $('settingsModal')?.classList.add('modal-hidden'); openLogoutConfirm(); });
+  $('editAccountBtn')?.addEventListener('click',()=>{ $('settingsModal')?.classList.add('modal-hidden'); toast('حساب تليجرام لا يحتاج تعديل', 'error'); });
+  $('logoutSettingsBtn')?.addEventListener('click',()=>{ $('settingsModal')?.classList.add('modal-hidden'); toast('استخدم زر الخروج من تليجرام', 'error'); });
   $('deleteAccountBtn')?.addEventListener('click',()=>{ $('settingsModal')?.classList.add('modal-hidden'); openDeleteAccountConfirm(); });
-  $('confirmDeleteAccountBtn')?.addEventListener('click',async()=>{ $('deleteAccountConfirmModal')?.classList.add('modal-hidden'); await deleteAccountPermanently(); });
+  $('confirmDeleteAccountBtn')?.addEventListener('click',async()=>{
+    $('deleteAccountConfirmModal')?.classList.add('modal-hidden');
+    if (confirm('هل أنت متأكد من حذف جميع بياناتك المحلية؟ لا يمكن التراجع.')) {
+      localStorage.removeItem(`hassab_tg_${currentTelegramUserId}`);
+      state.sections = []; state.activeId = null;
+      renderSidebar(); renderMain();
+      toast('🗑 تم حذف جميع بياناتك المحلية');
+    }
+  });
   $('focusModeBtn')?.addEventListener('click',toggleFocusMode);
-  $('saveAccountChangesBtn')?.addEventListener('click',saveAccountChanges);
+  $('saveAccountChangesBtn')?.addEventListener('click',()=>toast('حساب تليجرام لا يحتاج تعديل', 'error'));
   $('cancelEditAccountBtn')?.addEventListener('click',()=>$('editAccountModal')?.classList.add('modal-hidden'));
   $('exportBtn')?.addEventListener('click',()=>{
     const sec=sectionById(state.activeId); if (!sec) return toast('اختر قسماً أولاً','error');
@@ -1000,70 +758,23 @@ function initEventListeners() {
   document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>$(btn.dataset.close)?.classList.add('modal-hidden')));
 }
 
-// ===================== مراقبة المصادقة — نقطة التحكم الوحيدة =====================
-onAuthStateChanged(auth, async(user)=>{
-  if (user) {
-    currentUserId = user.uid;
-    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot=null; }
-
-    // ✅ خطوة 1: عرض الكاش المحلي فوراً (بدون انتظار الشبكة)
-    const cached = loadLocalCache(currentUserId);
-    if (cached) {
-      state.sections = Array.isArray(cached.sections) ? cached.sections : [];
-      state.activeId = state.sections[0]?.id || null;
-      renderSidebar(); renderMain();
-      setSyncStatus(false, 'من الكاش — جارِ المزامنة...');
-    }
-
-    // ✅ خطوة 2: جلب بيانات الملف الشخصي (profile) من السحابة
-    try {
-      const userDoc = await getDoc(doc(db,'users',currentUserId));
-      const displayName = userDoc.data()?.displayName || user.email;
-      state.currentUser = { email: user.email, displayName };
-    } catch { state.currentUser = { email: user.email, displayName: user.email }; }
-
-    closeAuthGate();
-    renderAuthArea();
-    toast(`مرحباً ${state.currentUser.displayName} ✓`);
-
-    // ✅ خطوة 3: تحميل من السحابة في الخلفية لتحديث الكاش
-    await loadFromCloud(currentUserId);
-
-    // ✅ خطوة 4: مستمع التزامن الفوري مع الأجهزة الأخرى
-    const docRef = doc(db,'users',currentUserId,'data','appData');
-    unsubscribeSnapshot = onSnapshot(docRef, snap => {
-      if (!snap.exists() || isSyncing) return;
-      const newData = snap.data();
-      if (JSON.stringify(newData.sections) !== JSON.stringify(state.sections)) {
-        applyPayload(newData); saveLocalCache(currentUserId);
-        renderSidebar(); renderMain();
-        setSyncStatus(false,'تم التحديث من جهاز آخر ✓');
-      }
-    });
-  } else {
-    // ✅ تنظيف كامل عند تسجيل الخروج — لا نحذف الكاش (للدخول السريع لاحقاً)
-    currentUserId = null; state.currentUser = null;
-    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
-    state.sections = []; state.activeId = null;
-    renderSidebar(); renderMain(); renderAuthArea();
-    openAuthGate('choose');
-  }
-});
-
 // ===================== بدء التطبيق =====================
 function init() {
+  if (!isTelegramWebApp || !tgUser) {
+    document.body.innerHTML = '<div style="text-align:center;padding:50px;"><h2>⚠️ هذا التطبيق يعمل فقط داخل بوت تليجرام</h2><p>الرجاء فتحه من زر "تطبيق الويب" في بوت حسّاب.</p></div>';
+    return;
+  }
+  currentTelegramUserId = tgUser.id;
   const th=localStorage.getItem(STORAGE_THEME); if (th) state.theme=th;
   if (window.innerWidth<700) state.sidebarOpen=false;
   applyTheme();
   $('sidebar')?.classList.toggle('collapsed',!state.sidebarOpen);
   initEventListeners();
+  loadFromLocal(currentTelegramUserId);
+  renderAuthArea();
+  // حفظ البيانات عند الإغلاق
+  window.addEventListener('beforeunload', () => saveToLocal());
   setTimeout(()=>{ $('splash')?.classList.add('done'); $('app')?.classList.remove('app-hidden'); },1200);
 }
-
-window.openEditModal=openEditModal;
-window.deleteRecord=deleteRecord;
-window.togglePin=togglePin;
-window.openSectionModal=openSectionModal;
-window.signOutApp=signOutApp;
 
 init();
