@@ -1,491 +1,929 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>لوحة تحكم المصحّح</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جدول المراجعة النهائية</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{
-  --red:#7B1818;--red2:#9B2020;--red-light:#F5EAEA;
-  --white:#fff;--gray:#666;--border:#E0D0D0;
-  --green:#2e7d32;--green-light:#E8F5E9;
-  --fail:#FDECEA;--pass:#E8F5E9;
-  --bg:var(--tg-theme-bg-color,#f7f3f3);
-  --text:var(--tg-theme-text-color,#111);
-  --btn:var(--tg-theme-button-color,#7B1818);
+@page { size: A4 landscape; margin: 7mm; }
+
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #080d14;
+  --surface:  #0f1520;
+  --card:     #0a0f1a;
+  --gold:     #d4af37;
+  --gold-dim: rgba(212,175,55,0.18);
+  --text:     #c9d1d9;
+  --muted:    #6e7681;
 }
-body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:20px}
 
-/* Header */
-header{background:var(--red);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-header h1{font-size:17px;flex:1}
-.live-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.fb-badge{font-size:10px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px}
+body {
+  font-family: 'Cairo', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  direction: rtl;
+  padding: 18px 22px;
+  min-width: 1000px;
+}
 
-/* Tabs */
-.tabs{display:flex;background:#fff;border-bottom:2px solid var(--border);overflow-x:auto;position:sticky;top:54px;z-index:100}
-.tab-btn{flex:1;min-width:68px;padding:11px 4px;background:none;border:none;font-size:12px;cursor:pointer;color:var(--gray);border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
-.tab-btn.active{color:var(--red);border-bottom-color:var(--red);font-weight:700}
+/* ═══════════════ HEADER ═══════════════ */
+.header {
+  background: linear-gradient(145deg, #111827 0%, #0d1117 100%);
+  border: 1px solid rgba(212,175,55,0.28);
+  border-radius: 20px;
+  padding: 18px 28px 15px;
+  margin-bottom: 16px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 15%; right: 15%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  border-radius: 2px;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 15%; right: 15%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent);
+}
 
-/* Pages */
-.page{display:none;padding:14px}
-.page.active{display:block}
+.htitle {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+}
 
-/* Cards */
-.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
-.card-title{font-weight:700;font-size:14px;margin-bottom:12px;color:var(--red);display:flex;align-items:center;gap:6px}
+.verse {
+  font-family: 'Amiri', serif;
+  font-size: 1.18rem;
+  color: #eedd88;
+  line-height: 2.4;
+  margin-bottom: 6px;
+}
 
-/* Stats */
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.stat-box{background:#fff;border-radius:14px;padding:16px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.07);border-top:3px solid var(--red)}
-.stat-num{font-size:30px;font-weight:700;color:var(--red)}
-.stat-num.danger{color:#c62828}
-.stat-label{font-size:11px;color:var(--gray);margin-top:3px}
+.motiv {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #8b949e;
+  letter-spacing: 2.5px;
+  margin-bottom: 12px;
+  font-family: 'Amiri', serif;
+}
 
-/* Toggles */
-.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)}
-.toggle-row:last-child{border-bottom:none}
-.toggle-label{font-size:14px;font-weight:500}
-.toggle-desc{font-size:11px;color:var(--gray);margin-top:2px}
-.toggle{position:relative;width:50px;height:28px;flex-shrink:0}
-.toggle input{display:none}
-.toggle-track{position:absolute;inset:0;background:#ccc;border-radius:28px;cursor:pointer;transition:.3s}
-.toggle-track::after{content:'';position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.25)}
-.toggle input:checked+.toggle-track{background:var(--red)}
-.toggle input:checked+.toggle-track::after{transform:translateX(22px)}
+.note-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--gold-dim);
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 30px;
+  padding: 5px 18px;
+  font-size: 0.82rem;
+  color: var(--gold);
+  font-weight: 600;
+}
 
-/* Inputs */
-.inp-group{margin-bottom:13px}
-.inp-group label{display:block;font-size:12px;color:var(--gray);margin-bottom:5px;font-weight:500}
-.inp-group input,.inp-group select{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:#fff;color:var(--text);outline:none;font-family:inherit;transition:border .2s}
-.inp-group input:focus,.inp-group select:focus{border-color:var(--red)}
+/* ═══════════════ LEGEND ═══════════════ */
+.legend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.li { display: flex; align-items: center; gap: 6px; }
+.lc {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 900;
+}
+.lc.le { border: 1.5px solid #475569; background: transparent; }
+.lc.ld { background: #15803d; border: 1.5px solid #22c55e; color: #bbf7d0; }
+.lc.lf { background: #991b1b; border: 1.5px solid #f87171; color: #fee2e2; }
+.sep { width: 1px; height: 14px; background: #30363d; }
 
-/* Buttons */
-.btn{display:block;width:100%;padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s,transform .1s;font-family:inherit}
-.btn:active{opacity:.8;transform:scale(.98)}
-.btn-primary{background:var(--red);color:#fff}
-.btn-outline{background:transparent;color:var(--red);border:2px solid var(--red);margin-top:8px}
-.btn-green{background:var(--green);color:#fff;margin-top:8px}
-.btn-sm{padding:7px 14px;font-size:12px;display:inline-block;width:auto;border-radius:8px}
+/* ═══════════════ SECTION ═══════════════ */
+.sec {
+  margin-bottom: 14px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid transparent;
+}
 
-/* Search */
-.search-box{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;margin-bottom:12px;outline:none;background:#fff;font-family:inherit}
-.search-box:focus{border-color:var(--red)}
+.sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 18px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.sec-head .lft { display: flex; align-items: center; gap: 9px; }
+.sec-head .ico { font-size: 1.2rem; }
+.sec-head .rng {
+  font-size: 0.73rem; font-weight: 400; opacity: 0.7;
+}
 
-/* Student list */
-.stu-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer}
-.stu-item:last-child{border-bottom:none}
-.stu-avatar{width:44px;height:44px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;font-weight:700;flex-shrink:0}
-.stu-name{font-weight:600;font-size:14px}
-.stu-meta{font-size:11px;color:var(--gray);margin-top:2px}
-.badges{margin-right:auto;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
-.badge{font-size:11px;padding:3px 9px;border-radius:10px;white-space:nowrap}
-.badge-yt{background:#e3f2fd;color:#1565c0}
-.badge-pr{background:#f3e5f5;color:#6a1b9a}
-.badge-pend{background:#fff3e0;color:#e65100}
-.badge-done{background:var(--green-light);color:var(--green)}
+/* ═══════════════ DAYS GRID ═══════════════ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 1px;
+  background: rgba(255,255,255,0.045);
+}
 
-/* PDF items */
-.pdf-item{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border)}
-.pdf-item:last-child{border-bottom:none}
-.pdf-icon{font-size:30px}
-.pdf-name{font-weight:700;font-size:14px}
-.pdf-meta{font-size:12px;color:var(--gray);margin-top:2px}
-.pdf-link{font-size:11px;color:var(--red);margin-top:4px;word-break:break-all;background:var(--red-light);padding:4px 8px;border-radius:6px;cursor:pointer}
+.dc {
+  background: var(--card);
+  padding: 9px 11px 8px;
+}
 
-/* Top students */
-.top-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
-.top-item:last-child{border-bottom:none}
-.top-rank{font-size:22px;width:36px;text-align:center}
-.top-grade{margin-right:auto;font-weight:700;font-size:16px;color:var(--red)}
+.dlbl {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 3px 6px;
+  border-radius: 5px;
+  margin-bottom: 7px;
+  letter-spacing: 0.4px;
+  line-height: 1.4;
+}
 
-/* Empty */
-.empty{text-align:center;padding:36px 20px;color:var(--gray)}
-.empty-icon{font-size:44px;display:block;margin-bottom:10px}
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+  border-radius: 4px;
+  padding: 1px 2px;
+}
+.task:hover { opacity: 0.82; }
+.task:last-child { margin-bottom: 0; }
 
-/* Toast */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#323232;color:#fff;padding:11px 22px;border-radius:24px;font-size:13px;z-index:999;transition:transform .3s;pointer-events:none;white-space:nowrap}
-.toast.show{transform:translateX(-50%) translateY(0)}
+.cb {
+  width: 15px; height: 15px;
+  border: 1.5px solid #3d444d;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 900;
+  transition: all 0.15s;
+  background: rgba(255,255,255,0.02);
+}
+.cb.done { background: #14532d; border-color: #22c55e; color: #86efac; }
+.cb.fail { background: #7f1d1d; border-color: #f87171; color: #fca5a5; }
 
-/* Loading */
-.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px;font-size:14px;color:var(--gray)}
-.spinner{width:44px;height:44px;border:4px solid #eee;border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.ttxt {
+  font-size: 0.68rem;
+  line-height: 1.55;
+  color: #8d96a0;
+}
+.task.tdone .ttxt { color: #3d444d; text-decoration: line-through; }
+.task.tfail .ttxt { color: #f87171; }
 
-/* Section title */
-.sec-title{font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px}
+/* ═══════════════ MATH — Blue ═══════════════ */
+.math { border-color: rgba(59,130,246,0.2); }
+.math .sec-head { background: linear-gradient(135deg, #0c2040 0%, #071529 100%); color: #93c5fd; }
+.math .dlbl { background: rgba(59,130,246,0.12); color: #60a5fa; }
+
+/* ═══════════════ CHEM — Emerald ═══════════════ */
+.chem { border-color: rgba(34,197,94,0.2); }
+.chem .sec-head { background: linear-gradient(135deg, #052e1a 0%, #031810 100%); color: #86efac; }
+.chem .dlbl { background: rgba(34,197,94,0.1); color: #4ade80; }
+
+/* ═══════════════ PHYSICS — Amber ═══════════════ */
+.physics { border-color: rgba(251,146,60,0.2); }
+.physics .sec-head { background: linear-gradient(135deg, #2c1205 0%, #180900 100%); color: #fdba74; }
+.physics .dlbl { background: rgba(251,146,60,0.1); color: #fb923c; }
+
+/* ═══════════════ ARABIC — Violet ═══════════════ */
+.arabic { border-color: rgba(167,139,250,0.2); }
+.arabic .sec-head { background: linear-gradient(135deg, #1e0a4a 0%, #110530 100%); color: #c4b5fd; }
+.arabic .dlbl { background: rgba(167,139,250,0.1); color: #a78bfa; }
+
+/* ═══════════════ ISLAMIC — Teal ═══════════════ */
+.islamic { border-color: rgba(20,184,166,0.2); }
+.islamic .sec-head { background: linear-gradient(135deg, #042f2b 0%, #021e1b 100%); color: #5eead4; }
+.islamic .dlbl { background: rgba(20,184,166,0.1); color: #2dd4bf; }
+
+/* ═══════════════ PRINT ═══════════════ */
+@media print {
+  body { background: #fff; color: #111; min-width: unset; padding: 0; }
+  .dc { background: #fff; }
+  .header { background: #fdf8ee; border-color: rgba(180,140,20,0.4); }
+  .verse { color: #7c5c00; }
+  .motiv { color: #555; }
+  .ttxt { color: #333; }
+  .task.tdone .ttxt { color: #999; }
+  .cb { border-color: #aaa; background: #fff; }
+  .cb.done { background: #dcfce7; border-color: #16a34a; color: #166534; }
+  .cb.fail { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+  .grid { background: #ddd; }
+  .sec-head { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .dlbl { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .export-bar, .export-overlay { display: none !important; }
+}
+
+/* ═══════════════ EXPORT BAR ═══════════════ */
+.export-bar {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(8,13,20,0.92);
+  border: 1px solid rgba(212,175,55,0.38);
+  border-radius: 50px;
+  padding: 9px 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 999;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,175,55,0.08);
+  direction: rtl;
+}
+
+.exp-label {
+  font-size: 0.75rem;
+  color: rgba(212,175,55,0.6);
+  font-weight: 600;
+  padding-left: 8px;
+  border-left: 1px solid rgba(212,175,55,0.2);
+  margin-left: 2px;
+  white-space: nowrap;
+}
+
+.exp-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(212,175,55,0.28);
+  border-radius: 30px;
+  padding: 7px 17px;
+  color: #d4af37;
+  font-family: 'Cairo', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.exp-btn:hover {
+  background: rgba(212,175,55,0.13);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+.exp-btn:active { transform: scale(0.96) translateY(0); }
+.exp-btn:disabled { opacity: 0.45; cursor: wait; transform: none; }
+.exp-btn .eico { font-size: 1rem; line-height: 1; }
+
+/* ═══════════════ OVERLAY ═══════════════ */
+.export-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 18px;
+  backdrop-filter: blur(4px);
+}
+.export-overlay.show { display: flex; }
+
+.ov-box {
+  background: #0f1520;
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 20px;
+  padding: 32px 44px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 260px;
+}
+
+.ov-spinner {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(212,175,55,0.15);
+  border-top-color: #d4af37;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ov-msg {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+.ov-sub {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
 </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="overlay">
-  <div class="spinner"></div>
-  <div>جاري التحميل...</div>
+<!-- ══════ HEADER ══════ -->
+<div class="header">
+  <div class="htitle">📚 جدول المراجعة النهائية</div>
+  <div class="verse">﴿وَالَّذِينَ جَاهَدُوا فِينَا لَنَهْدِيَنَّهُمْ سُبُلَنَا ۚ وَإِنَّ اللَّهَ لَمَعَ الْمُحْسِنِينَ﴾</div>
+  <div class="motiv">صَبْرُ الشَّجَاعِ فِي مَيَادِينِ الْعِلْمِ</div>
+  <span class="note-box">⚡ ملاحظة: في أي فراغ ندرس «أدب» أو «إسلامية»</span>
 </div>
 
-<header>
-  <span>📊</span>
-  <h1>لوحة تحكم المصحّح</h1>
-  <div class="live-dot" id="live-dot" title="غير متصل"></div>
-  <span class="fb-badge">Firebase</span>
-</header>
-
-<div class="tabs">
-  <button class="tab-btn active" onclick="showTab('stats',this)">📊 إحصائيات</button>
-  <button class="tab-btn" onclick="showTab('students',this)">👥 الطلاب</button>
-  <button class="tab-btn" onclick="showTab('pending',this)">⏳ منتظرة</button>
-  <button class="tab-btn" onclick="showTab('pdfs',this)">📄 PDF</button>
-  <button class="tab-btn" onclick="showTab('settings',this)">⚙️ إعدادات</button>
+<!-- ══════ LEGEND ══════ -->
+<div class="legend">
+  <div class="li"><div class="lc le"></div><span>لم تبدأ بعد</span></div>
+  <div class="sep"></div>
+  <div class="li"><div class="lc ld">✓</div><span>مكتملة</span></div>
+  <div class="sep"></div>
+  <div class="li"><div class="lc lf">✗</div><span>غير مكتملة</span></div>
+  <div class="sep"></div>
+  <span style="font-size:0.75rem;color:#475569">اضغط على المربع للتبديل بين الحالات</span>
 </div>
 
-<!-- Stats -->
-<div id="page-stats" class="page active">
-  <div class="stats-grid">
-    <div class="stat-box"><div class="stat-num" id="st-total">—</div><div class="stat-label">إجمالي الطلاب</div></div>
-    <div class="stat-box"><div class="stat-num danger" id="st-pend">—</div><div class="stat-label">إجابات منتظرة</div></div>
-    <div class="stat-box"><div class="stat-num" id="st-yt">—</div><div class="stat-label">طلاب يوتيوب</div></div>
-    <div class="stat-box"><div class="stat-num" id="st-pr">—</div><div class="stat-label">طلاب خصوصيون</div></div>
+<!-- ══════════════════════════════════════ -->
+<!--          1. الرياضيات                 -->
+<!-- ══════════════════════════════════════ -->
+<div class="sec math">
+  <div class="sec-head">
+    <div class="lft"><span class="ico">📐</span> الرياضيات</div>
+    <span class="rng">٢٥/٤ — ٢/٥ &nbsp;·&nbsp; ٨ أيام</span>
   </div>
-  <div class="card">
-    <div class="card-title">🏆 أعلى الطلاب درجةً</div>
-    <div id="top-students"><div class="empty"><span class="empty-icon">📊</span>جاري التحميل...</div></div>
-  </div>
-  <button class="btn btn-outline" onclick="refreshAll()">🔄 تحديث البيانات</button>
-</div>
+  <div class="grid">
 
-<!-- Students -->
-<div id="page-students" class="page">
-  <input class="search-box" type="text" id="stu-search" placeholder="🔍 ابحث باسم الطالب أو المحافظة..." oninput="renderStudents()">
-  <div class="card">
-    <div id="stu-list"><div class="empty"><span class="empty-icon">⏳</span>جاري التحميل...</div></div>
-  </div>
-</div>
-
-<!-- Pending -->
-<div id="page-pending" class="page">
-  <div class="card">
-    <div class="card-title">⏳ إجابات منتظرة التصحيح</div>
-    <div id="pend-list"><div class="empty"><span class="empty-icon">⏳</span>جاري التحميل...</div></div>
-  </div>
-</div>
-
-<!-- PDFs -->
-<div id="page-pdfs" class="page">
-  <div class="card">
-    <div class="card-title">➕ إنشاء مجموعة جديدة</div>
-    <div class="inp-group"><label>اسم المجموعة</label><input type="text" id="pdf-name" placeholder="مثال: الصف الخامس أ"></div>
-    <div class="inp-group"><label>الدرجة الكاملة</label><input type="number" id="pdf-max" placeholder="مثال: 10" min="1"></div>
-    <div class="inp-group"><label>المادة (اختياري)</label><input type="text" id="pdf-subj" placeholder="مثال: الرياضيات"></div>
-    <div class="inp-group"><label>الترتيب</label>
-      <select id="pdf-sort">
-        <option value="name">الاسم أبجدياً</option>
-        <option value="grade_desc">الأعلى درجةً أولاً</option>
-        <option value="grade_asc">الأدنى درجةً أولاً</option>
-        <option value="type">نوع الطالب</option>
-        <option value="governorate">المحافظة</option>
-      </select>
+    <!-- 4/25 -->
+    <div class="dc">
+      <div class="dlbl">السبت ٢٥/٤</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الأول</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الأول</span></div>
     </div>
-    <button class="btn btn-primary" onclick="createPdf()">✅ إنشاء المجموعة</button>
+
+    <!-- 4/26 -->
+    <div class="dc">
+      <div class="dlbl">الأحد ٢٦/٤</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الثاني</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الثاني</span></div>
+    </div>
+
+    <!-- 4/27 -->
+    <div class="dc">
+      <div class="dlbl">الاثنين ٢٧/٤</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الثالث ج١</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الثالث ج١</span></div>
+    </div>
+
+    <!-- 4/28 -->
+    <div class="dc">
+      <div class="dlbl">الثلاثاء ٢٨/٤</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الثالث ج٢</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الثالث ج٢</span></div>
+    </div>
+
+    <!-- 4/29 -->
+    <div class="dc">
+      <div class="dlbl">الأربعاء ٢٩/٤</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الرابع ج١</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الرابع ج١</span></div>
+    </div>
+
+    <!-- 4/30 -->
+    <div class="dc">
+      <div class="dlbl">الخميس ٣٠/٤</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الرابع ج٢</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الرابع ج٢</span></div>
+    </div>
+
+    <!-- 5/1 -->
+    <div class="dc">
+      <div class="dlbl">الجمعة ١/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الخامس</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الخامس</span></div>
+    </div>
+
+    <!-- 5/2 -->
+    <div class="dc">
+      <div class="dlbl">السبت ٢/٥ ⭐</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة كاملة</span></div>
+    </div>
+
+  </div><!-- /grid -->
+</div><!-- /math -->
+
+
+<!-- ══════════════════════════════════════ -->
+<!--            2. الكيمياء                -->
+<!-- ══════════════════════════════════════ -->
+<div class="sec chem">
+  <div class="sec-head">
+    <div class="lft"><span class="ico">🧪</span> الكيمياء</div>
+    <span class="rng">٣/٥ — ٩/٥ &nbsp;·&nbsp; ٧ أيام</span>
   </div>
-  <div class="sec-title">المجموعات الحالية</div>
-  <div class="card">
-    <div id="pdf-list"><div class="empty"><span class="empty-icon">⏳</span>جاري التحميل...</div></div>
+  <div class="grid">
+
+    <!-- 5/3 -->
+    <div class="dc">
+      <div class="dlbl">الأحد ٣/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — شرحيات</span></div>
+    </div>
+
+    <!-- 5/4 -->
+    <div class="dc">
+      <div class="dlbl">الاثنين ٤/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — شرحيات</span></div>
+    </div>
+
+    <!-- 5/5 -->
+    <div class="dc">
+      <div class="dlbl">الثلاثاء ٥/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — شرحيات</span></div>
+    </div>
+
+    <!-- 5/6 -->
+    <div class="dc">
+      <div class="dlbl">الأربعاء ٦/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — شرحيات</span></div>
+    </div>
+
+    <!-- 5/7 -->
+    <div class="dc">
+      <div class="dlbl">الخميس ٧/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — شرحيات</span></div>
+    </div>
+
+    <!-- 5/8–9 -->
+    <div class="dc">
+      <div class="dlbl">الجمعة–السبت ٨–٩/٥ ⭐</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">إكمال ما تبقى من المادة</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة</span></div>
+    </div>
+
+  </div>
+</div><!-- /chem -->
+
+
+<!-- ══════════════════════════════════════ -->
+<!--            3. الفيزياء                -->
+<!-- ══════════════════════════════════════ -->
+<div class="sec physics">
+  <div class="sec-head">
+    <div class="lft"><span class="ico">⚛️</span> الفيزياء</div>
+    <span class="rng">١٠/٥ — ٢٠/٥ &nbsp;·&nbsp; ١١ يوماً</span>
+  </div>
+  <div class="grid">
+
+    <!-- 5/10 -->
+    <div class="dc">
+      <div class="dlbl">الأحد ١٠/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — شرحيات</span></div>
+    </div>
+
+    <!-- 5/11 -->
+    <div class="dc">
+      <div class="dlbl">الاثنين ١١/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — شرحيات</span></div>
+    </div>
+
+    <!-- 5/12 -->
+    <div class="dc">
+      <div class="dlbl">الثلاثاء ١٢/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — شرحيات</span></div>
+    </div>
+
+    <!-- 5/13 -->
+    <div class="dc">
+      <div class="dlbl">الأربعاء ١٣/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — شرحيات</span></div>
+    </div>
+
+    <!-- 5/14 -->
+    <div class="dc">
+      <div class="dlbl">الخميس ١٤/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — شرحيات</span></div>
+    </div>
+
+    <!-- 5/15 -->
+    <div class="dc">
+      <div class="dlbl">الجمعة ١٥/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السادس — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السادس — شرحيات</span></div>
+    </div>
+
+    <!-- 5/16 -->
+    <div class="dc">
+      <div class="dlbl">السبت ١٦/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السابع — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السابع — شرحيات</span></div>
+    </div>
+
+    <!-- 5/17 -->
+    <div class="dc">
+      <div class="dlbl">الأحد ١٧/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثامن — مسائل</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثامن — شرحيات</span></div>
+    </div>
+
+    <!-- 5/18–20 -->
+    <div class="dc">
+      <div class="dlbl">الاثنين–الأربعاء ١٨–٢٠/٥ ⭐</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">إكمال ما تبقى من المادة</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة</span></div>
+    </div>
+
+  </div>
+</div><!-- /physics -->
+
+
+<!-- ══════════════════════════════════════ -->
+<!--          4. اللغة العربية             -->
+<!-- ══════════════════════════════════════ -->
+<div class="sec arabic">
+  <div class="sec-head">
+    <div class="lft"><span class="ico">✍️</span> اللغة العربية</div>
+    <span class="rng">٢١/٥ — ٣١/٥ &nbsp;·&nbsp; ١١ يوماً</span>
+  </div>
+  <div class="grid">
+
+    <!-- 5/21 -->
+    <div class="dc">
+      <div class="dlbl">الخميس ٢١/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب الاستفهام</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/22 -->
+    <div class="dc">
+      <div class="dlbl">الجمعة ٢٢/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب النفي ١</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/23 -->
+    <div class="dc">
+      <div class="dlbl">السبت ٢٣/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب النفي ٢</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/24 -->
+    <div class="dc">
+      <div class="dlbl">الأحد ٢٤/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التقديم والتأخير</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/25 -->
+    <div class="dc">
+      <div class="dlbl">الاثنين ٢٥/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التوكيد</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/26 -->
+    <div class="dc">
+      <div class="dlbl">الثلاثاء ٢٦/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب النداء</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/27 -->
+    <div class="dc">
+      <div class="dlbl">الأربعاء ٢٧/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التعجب</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/28 -->
+    <div class="dc">
+      <div class="dlbl">الخميس ٢٨/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب المدح والذم</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/29 -->
+    <div class="dc">
+      <div class="dlbl">الجمعة ٢٩/٥</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التمني والترجي</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب العرض والتحضيض</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
+    </div>
+
+    <!-- 5/30–31 -->
+    <div class="dc">
+      <div class="dlbl">السبت–الأحد ٣٠–٣١/٥ ⭐</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">إكمال ما تبقى من المادة</span></div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة</span></div>
+    </div>
+
+  </div>
+</div><!-- /arabic -->
+
+
+<!-- ══════════════════════════════════════ -->
+<!--           5. الإسلامية                -->
+<!-- ══════════════════════════════════════ -->
+<div class="sec islamic">
+  <div class="sec-head">
+    <div class="lft"><span class="ico">☪️</span> الإسلامية</div>
+    <span class="rng">١/٦ — ١٢/٦ &nbsp;·&nbsp; ١٢ يوماً</span>
+  </div>
+  <div class="grid">
+
+    <div class="dc">
+      <div class="dlbl">الاثنين ١/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الثلاثاء ٢/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الأربعاء ٣/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الخميس ٤/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الجمعة ٥/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">السبت ٦/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الأحد ٧/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الاثنين ٨/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الثلاثاء ٩/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الأربعاء ١٠/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الخميس ١١/٦</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
+    </div>
+
+    <div class="dc">
+      <div class="dlbl">الجمعة ١٢/٦ ⭐</div>
+      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">مراجعة شاملة للإسلامية</span></div>
+    </div>
+
+  </div>
+</div><!-- /islamic -->
+
+
+<!-- ══════ EXPORT OVERLAY ══════ -->
+<div class="export-overlay" id="overlay">
+  <div class="ov-box">
+    <div class="ov-spinner"></div>
+    <div class="ov-msg" id="ov-msg">جارٍ المعالجة...</div>
+    <div class="ov-sub" id="ov-sub">الرجاء الانتظار، قد يستغرق بعض الوقت</div>
   </div>
 </div>
 
-<!-- Settings -->
-<div id="page-settings" class="page">
-  <div class="card">
-    <div class="card-title">📝 حقول التسجيل</div>
-    <div class="toggle-row">
-      <div><div class="toggle-label">السؤال عن المحافظة</div><div class="toggle-desc">هل يُسأل الطالب عن محافظته؟</div></div>
-      <label class="toggle"><input type="checkbox" id="tgl-gov" onchange="saveSetting('ask_governorate',this.checked)"><div class="toggle-track"></div></label>
-    </div>
-    <div class="toggle-row">
-      <div><div class="toggle-label">السؤال عن المدرسة</div><div class="toggle-desc">هل يُسأل الطالب عن مدرسته؟</div></div>
-      <label class="toggle"><input type="checkbox" id="tgl-school" onchange="saveSetting('ask_school',this.checked)"><div class="toggle-track"></div></label>
-    </div>
-    <div class="toggle-row">
-      <div><div class="toggle-label">السؤال عن النوع</div><div class="toggle-desc">يوتيوب أم خصوصي؟</div></div>
-      <label class="toggle"><input type="checkbox" id="tgl-type" onchange="saveSetting('ask_type',this.checked)"><div class="toggle-track"></div></label>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">🤖 حالة البوت</div>
-    <div class="toggle-row">
-      <div><div class="toggle-label">البوت مفتوح للطلاب</div><div class="toggle-desc">عند الإيقاف لا يستطيع الطلاب التسجيل</div></div>
-      <label class="toggle"><input type="checkbox" id="tgl-bot" onchange="saveSetting('bot_active',this.checked)"><div class="toggle-track"></div></label>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">✏️ اسم الأستاذ</div>
-    <div class="inp-group"><input type="text" id="teacher-name" placeholder="اسم الأستاذ في PDF"></div>
-    <button class="btn btn-primary" onclick="saveTeacher()">💾 حفظ</button>
-  </div>
-  <div class="card">
-    <div class="card-title">🔧 أدوات</div>
-    <button class="btn btn-outline" onclick="refreshAll()">🔄 تحديث من Firebase</button>
-  </div>
+<!-- ══════ EXPORT BAR ══════ -->
+<div class="export-bar" id="exportBar">
+  <span class="exp-label">📤 تصدير الجدول</span>
+  <button class="exp-btn" id="btnImg" onclick="exportImage()">
+    <span class="eico">🖼️</span> صورة PNG
+  </button>
+  <button class="exp-btn" id="btnPdf" onclick="exportPDF()">
+    <span class="eico">📄</span> ملف PDF
+  </button>
 </div>
 
-<div class="toast" id="toast"></div>
+<script>
+/* ─── Toggle checkbox: empty → done(✓) → fail(✗) → empty ─── */
+function tog(el) {
+  const cb  = el.querySelector('.cb');
+  const s   = parseInt(cb.dataset.s || '0');
+  const nxt = (s + 1) % 3;
 
-<!-- Firebase SDK -->
-<script type="module">
-import { initializeApp }    from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot, updateDoc, setDoc, getDocs }
-  from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+  const cbCls   = ['',     'done',   'fail'];
+  const cbIcon  = ['',     '✓',      '✗'];
+  const taskCls = ['task', 'task tdone', 'task tfail'];
 
-const cfg = {
-  apiKey:"AIzaSyAc51j5i9UWaWjXxa_bIYKo1WSOhyew9As",
-  authDomain:"x4xyv-b2abb.firebaseapp.com",
-  projectId:"x4xyv-b2abb",
-  storageBucket:"x4xyv-b2abb.firebasestorage.app",
-  messagingSenderId:"1036452466858",
-  appId:"1:1036452466858:web:d73079cbe08511a76480d3"
-};
-const app = initializeApp(cfg);
-const db  = getFirestore(app);
+  cb.dataset.s  = nxt;
+  cb.className  = 'cb' + (nxt ? ' ' + cbCls[nxt] : '');
+  cb.textContent = cbIcon[nxt];
+  el.className  = taskCls[nxt];
 
-window._db = db;
-window._fbMod = { collection, doc, onSnapshot, updateDoc, setDoc, getDocs };
+  save();
+}
 
-// ── Load on start ──
-async function loadAll() {
+/* ─── Persist to localStorage ─── */
+function save() {
+  const data = {};
+  document.querySelectorAll('.cb').forEach((cb, i) => {
+    data[i] = cb.dataset.s || '0';
+  });
+  try { localStorage.setItem('sched_v1', JSON.stringify(data)); } catch(e){}
+}
+
+function load() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem('sched_v1')); } catch(e){ return; }
+  if (!data) return;
+
+  const cbCls   = ['',     'done',   'fail'];
+  const cbIcon  = ['',     '✓',      '✗'];
+  const taskCls = ['task', 'task tdone', 'task tfail'];
+
+  document.querySelectorAll('.cb').forEach((cb, i) => {
+    const s = parseInt(data[i] || '0');
+    if (!s) return;
+    cb.dataset.s   = s;
+    cb.className   = 'cb ' + cbCls[s];
+    cb.textContent = cbIcon[s];
+    const t = cb.closest('.task');
+    if (t) t.className = taskCls[s];
+  });
+}
+
+window.addEventListener('DOMContentLoaded', load);
+
+/* ═══════════════ EXPORT HELPERS ═══════════════ */
+function showOverlay(msg, sub) {
+  document.getElementById('ov-msg').textContent = msg || 'جارٍ المعالجة...';
+  document.getElementById('ov-sub').textContent = sub || 'الرجاء الانتظار، قد يستغرق بعض الوقت';
+  document.getElementById('overlay').classList.add('show');
+}
+function hideOverlay() {
+  document.getElementById('overlay').classList.remove('show');
+}
+function setBtns(disabled) {
+  document.getElementById('btnImg').disabled = disabled;
+  document.getElementById('btnPdf').disabled = disabled;
+}
+
+/* ─── Capture full page canvas ─── */
+async function captureCanvas() {
+  const bar = document.getElementById('exportBar');
+  bar.style.visibility = 'hidden';
+
+  // Scroll to top so html2canvas captures from origin
+  const savedScroll = window.scrollY;
+  window.scrollTo(0, 0);
+
+  const bodyW = Math.max(document.body.scrollWidth, 1200);
+  const bodyH = document.body.scrollHeight;
+
+  const canvas = await html2canvas(document.body, {
+    scale: 2,
+    useCORS: true,
+    allowTaint: false,
+    logging: false,
+    backgroundColor: '#080d14',
+    width: bodyW,
+    height: bodyH,
+    scrollX: 0,
+    scrollY: 0,
+    windowWidth: bodyW,
+    windowHeight: bodyH,
+    imageTimeout: 15000,
+    onclone: (doc) => {
+      // Hide export bar in clone
+      const b = doc.getElementById('exportBar');
+      if (b) b.style.display = 'none';
+      const ov = doc.getElementById('overlay');
+      if (ov) ov.style.display = 'none';
+    }
+  });
+
+  window.scrollTo(0, savedScroll);
+  bar.style.visibility = '';
+  return canvas;
+}
+
+/* ═══════════════ EXPORT AS IMAGE ═══════════════ */
+async function exportImage() {
+  showOverlay('جارٍ إنشاء الصورة...', 'يتم التقاط الجدول كاملاً بجودة عالية');
+  setBtns(true);
   try {
-    showLoading(true);
-
-    // Settings
-    const settSnap = await getDocs(collection(db,"app_data"));
-    settSnap.forEach(d => { if(d.id==='settings') W.settings = d.data(); });
-
-    // Students
-    const stuSnap = await getDocs(collection(db,"students"));
-    W.students = stuSnap.docs.map(d => ({...d.data(), _id:d.id}));
-
-    // PDF groups
-    const pdfSnap = await getDocs(collection(db,"pdf_groups"));
-    W.pdfs = pdfSnap.docs.map(d => ({...d.data(), _id:d.id})).filter(g=>!g.finalized)
-             .sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
-
-    // Grades
-    const grdSnap = await getDocs(collection(db,"grades"));
-    W.grades = grdSnap.docs.map(d => ({...d.data(), _id:d.id}));
-
-    // Sessions
-    const sesSnap = await getDocs(collection(db,"sessions"));
-    W.sessions = sesSnap.docs.map(d => ({...d.data(), _id:d.id}));
-
-    renderAll();
-    showLoading(false);
-    setConnected(true);
+    const canvas = await captureCanvas();
+    const link = document.createElement('a');
+    link.download = 'جدول-المراجعة-النهائية.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
   } catch(e) {
-    console.error("Load error:", e);
-    showLoading(false);
-    toast("⚠️ خطأ في الاتصال بـ Firebase: "+e.message);
+    alert('حدث خطأ أثناء التصدير: ' + e.message);
+  } finally {
+    hideOverlay();
+    setBtns(false);
   }
 }
 
-// ── Realtime listeners ──
-function listenRealtime() {
-  onSnapshot(collection(db,"students"), snap => {
-    W.students = snap.docs.map(d=>({...d.data(),_id:d.id}));
-    renderStudents(); renderStats(); renderPending();
-    setConnected(true);
-  });
-  onSnapshot(collection(db,"pdf_groups"), snap => {
-    W.pdfs = snap.docs.map(d=>({...d.data(),_id:d.id})).filter(g=>!g.finalized)
-             .sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
-    renderPdfs();
-  });
-  onSnapshot(doc(db,"app_data","settings"), snap => {
-    if(snap.exists()){ W.settings=snap.data(); applySettings(); }
-  });
-  onSnapshot(collection(db,"grades"), snap => {
-    W.grades = snap.docs.map(d=>({...d.data(),_id:d.id}));
-    renderStats(); renderPending(); renderPdfs();
-  });
-  onSnapshot(collection(db,"sessions"), snap => {
-    W.sessions = snap.docs.map(d=>({...d.data(),_id:d.id}));
-    renderPending(); renderStats();
-  });
-}
+/* ═══════════════ EXPORT AS PDF ═══════════════ */
+async function exportPDF() {
+  showOverlay('جارٍ إنشاء ملف PDF...', 'يتم تقسيم الجدول على صفحات A4 أفقية');
+  setBtns(true);
+  try {
+    const canvas = await captureCanvas();
+    const { jsPDF } = window.jspdf;
 
-window._updateSetting = async (key,val) => {
-  await updateDoc(doc(db,"app_data","settings"),{[key]:val});
-};
+    // A4 landscape dimensions in mm
+    const PDF_W = 297;
+    const PDF_H = 210;
 
-window.addEventListener('load', () => { loadAll(); listenRealtime(); });
-window.refreshAll = () => { loadAll(); toast("🔄 تم تحديث البيانات"); };
-</script>
+    // mm per canvas pixel (fit full width into PDF_W)
+    const mmPerPx = PDF_W / canvas.width;
 
-<script>
-const tg = window.Telegram?.WebApp;
-if(tg){ tg.ready(); tg.expand(); }
+    // How many canvas pixels fit in one page height
+    const pageHeightPx = Math.round(PDF_H / mmPerPx);
 
-const W = { settings:{}, students:[], pdfs:[], grades:[], sessions:[] };
+    const totalPages = Math.ceil(canvas.height / pageHeightPx);
 
-// ── UI helpers ──
-function showLoading(v){ document.getElementById('overlay').style.display = v?'flex':'none'; }
-function setConnected(v){
-  const d=document.getElementById('live-dot');
-  d.style.background=v?'#4caf50':'#f44336';
-  d.title=v?'متصل بـ Firebase':'غير متصل';
-}
-function showTab(name, btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
-}
-function toast(msg, dur=2800){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'),dur);
-}
-function setEl(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
-function sendCmd(action,data={}){
-  if(tg?.sendData) tg.sendData(JSON.stringify({action,...data}));
-}
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
 
-// ── Render all ──
-function renderAll(){ applySettings(); renderStudents(); renderStats(); renderPending(); renderPdfs(); }
+    for (let p = 0; p < totalPages; p++) {
+      if (p > 0) pdf.addPage('a4', 'landscape');
 
-// ── Settings ──
-function applySettings(){
-  const s=W.settings;
-  const sc=(id,key)=>{ const e=document.getElementById(id); if(e) e.checked=s[key]==='1'||s[key]===true; };
-  sc('tgl-gov','ask_governorate'); sc('tgl-school','ask_school'); sc('tgl-type','ask_type'); sc('tgl-bot','bot_active');
-  const tn=document.getElementById('teacher-name'); if(tn) tn.value=s.teacher_name||'';
-}
-async function saveSetting(key,val){
-  const v=val?'1':'0';
-  W.settings[key]=v;
-  if(window._updateSetting){ try{ await window._updateSetting(key,v); toast('✅ تم التحديث'); }catch(e){ toast('⚠️ '+e.message); } }
-  else { sendCmd('save_setting',{key,value:v}); toast('✅ تم التحديث'); }
-}
-async function saveTeacher(){
-  const n=document.getElementById('teacher-name').value.trim();
-  if(!n){ toast('⚠️ أدخل الاسم'); return; }
-  if(window._updateSetting){ try{ await window._updateSetting('teacher_name',n); toast('✅ تم الحفظ'); }catch(e){ toast('⚠️ '+e.message); } }
-  else { sendCmd('save_setting',{key:'teacher_name',value:n}); toast('✅ تم الحفظ'); }
-}
+      const srcY  = p * pageHeightPx;
+      const srcH  = Math.min(pageHeightPx, canvas.height - srcY);
 
-// ── Stats ──
-function renderStats(){
-  const stus = W.students.filter(s=>s.state==='done');
-  const pend = W.sessions.filter(se=>se.status==='submitted' && !W.grades.find(g=>String(g.session_id)===String(se._id))).length;
-  setEl('st-total', stus.length);
-  setEl('st-pend',  pend);
-  setEl('st-yt',    stus.filter(s=>(s.student_type||'').includes('يوتيوب')).length);
-  setEl('st-pr',    stus.filter(s=>(s.student_type||'').includes('خصوصي')).length);
+      // Slice this page from full canvas
+      const slice = document.createElement('canvas');
+      slice.width  = canvas.width;
+      slice.height = srcH;
+      const ctx = slice.getContext('2d');
+      // Fill background
+      ctx.fillStyle = '#080d14';
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
 
-  const gradedList = W.grades.filter(g=>g.grade!=null).sort((a,b)=>b.grade-a.grade).slice(0,5);
-  const stuMap={};
-  W.students.forEach(s=>{ stuMap[s.telegram_id||s._id]=s; });
-  const topEl=document.getElementById('top-students');
-  if(!gradedList.length){ topEl.innerHTML='<div class="empty"><span class="empty-icon">📊</span>لا توجد درجات بعد</div>'; return; }
-  const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];
-  topEl.innerHTML=gradedList.map((g,i)=>{
-    const s=stuMap[g.telegram_id]||{};
-    const gd=fmtGrade(g.grade, g.max_grade||g.group_max);
-    return `<div class="top-item">
-      <div class="top-rank">${medals[i]||i+1}</div>
-      <div><div class="stu-name">${s.full_name||'—'}</div><div class="stu-meta">${s.student_type||'—'} | ${s.governorate||'—'}</div></div>
-      <div class="top-grade">${gd}</div>
-    </div>`;
-  }).join('');
-}
+      const imgData   = slice.toDataURL('image/jpeg', 0.93);
+      const imgH_mm   = srcH * mmPerPx;
 
-// ── Students ──
-function renderStudents(){
-  const q=(document.getElementById('stu-search')?.value||'').toLowerCase();
-  const pend=new Set(W.sessions.filter(se=>se.status==='submitted'&&!W.grades.find(g=>String(g.session_id)===String(se._id))).map(se=>String(se.telegram_id)));
-  let stus=W.students.filter(s=>s.state==='done');
-  if(q) stus=stus.filter(s=>(s.full_name||'').toLowerCase().includes(q)||(s.governorate||'').toLowerCase().includes(q)||(s.school||'').toLowerCase().includes(q));
-  const el=document.getElementById('stu-list');
-  if(!stus.length){ el.innerHTML=`<div class="empty"><span class="empty-icon">📭</span>${q?'لا نتائج':'لا يوجد طلاب بعد'}</div>`; return; }
-  el.innerHTML=stus.map(s=>{
-    const init=(s.full_name||'?')[0];
-    const tc=s.student_type?.includes('يوتيوب')?'badge-yt':'badge-pr';
-    const hasPend=pend.has(String(s.telegram_id||s._id));
-    return `<div class="stu-item">
-      <div class="stu-avatar">${init}</div>
-      <div style="flex:1;min-width:0">
-        <div class="stu-name">${s.full_name||'—'}</div>
-        <div class="stu-meta">${s.governorate||''} ${s.school?'| '+s.school:''}</div>
-      </div>
-      <div class="badges">
-        <span class="badge ${tc}">${s.student_type||'—'}</span>
-        ${hasPend?'<span class="badge badge-pend">⏳ منتظر</span>':'<span class="badge badge-done">✅ مصحَّح</span>'}
-      </div>
-    </div>`;
-  }).join('');
-}
+      pdf.addImage(imgData, 'JPEG', 0, 0, PDF_W, imgH_mm, '', 'FAST');
+    }
 
-// ── Pending ──
-function renderPending(){
-  const gradedSessions=new Set(W.grades.map(g=>String(g.session_id)));
-  const pendSessions=W.sessions.filter(se=>se.status==='submitted'&&!gradedSessions.has(String(se._id)));
-  const stuMap={};
-  W.students.forEach(s=>{ stuMap[String(s.telegram_id||s._id)]=s; });
-  const el=document.getElementById('pend-list');
-  if(!pendSessions.length){ el.innerHTML='<div class="empty"><span class="empty-icon">✅</span>لا توجد إجابات منتظرة</div>'; return; }
-  el.innerHTML=pendSessions.slice(0,30).map(se=>{
-    const s=stuMap[String(se.telegram_id)]||{};
-    const tc=(s.student_type||'').includes('يوتيوب')?'badge-yt':'badge-pr';
-    const time=se.submitted_at?new Date(se.submitted_at).toLocaleString('ar'):'';
-    return `<div class="stu-item">
-      <div class="stu-avatar" style="background:#c62828">${(s.full_name||'?')[0]}</div>
-      <div style="flex:1;min-width:0">
-        <div class="stu-name">${s.full_name||'—'}</div>
-        <div class="stu-meta">${time}</div>
-      </div>
-      <span class="badge ${tc}">${s.student_type||'—'}</span>
-    </div>`;
-  }).join('');
+    pdf.save('جدول-المراجعة-النهائية.pdf');
+  } catch(e) {
+    alert('حدث خطأ أثناء التصدير: ' + e.message);
+  } finally {
+    hideOverlay();
+    setBtns(false);
+  }
 }
-
-// ── PDFs ──
-function renderPdfs(){
-  const el=document.getElementById('pdf-list');
-  if(!W.pdfs.length){ el.innerHTML='<div class="empty"><span class="empty-icon">📭</span>لا توجد مجموعات بعد</div>'; return; }
-  const cnt=(pid)=>W.students.filter(s=>String(s.pdf_group_id)===String(pid)||s.pdf_group_id==pid).length;
-  el.innerHTML=W.pdfs.map(g=>{
-    const c=cnt(g.id||g._id);
-    const link=g.bot_username&&g.group_token?`https://t.me/${g.bot_username}?start=group_${g.group_token}`:'';
-    return `<div class="pdf-item">
-      <div class="pdf-icon">📄</div>
-      <div style="flex:1;min-width:0">
-        <div class="pdf-name">${g.name}</div>
-        <div class="pdf-meta">من ${g.max_grade} | ${sortLbl(g.sort_by)} | <strong>${c} طالب</strong></div>
-        ${link?`<div class="pdf-link" onclick="copyLink('${link}')">🔗 ${link.split('?')[1]||'رابط الطلاب'} — انقر للنسخ</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-function copyLink(link){
-  navigator.clipboard?.writeText(link).then(()=>toast('✅ تم نسخ الرابط!')).catch(()=>toast('الرابط: '+link));
-}
-function createPdf(){
-  const name=document.getElementById('pdf-name').value.trim();
-  const max =document.getElementById('pdf-max').value.trim();
-  const subj=document.getElementById('pdf-subj').value.trim();
-  const sort=document.getElementById('pdf-sort').value;
-  if(!name){ toast('⚠️ أدخل اسم المجموعة'); return; }
-  if(!max||isNaN(max)||+max<=0){ toast('⚠️ أدخل درجة صحيحة'); return; }
-  sendCmd('create_pdf',{name,max_grade:+max,sort_by:sort,subject:subj});
-  toast('✅ تم إرسال الطلب للبوت');
-  document.getElementById('pdf-name').value='';
-  document.getElementById('pdf-max').value='';
-  document.getElementById('pdf-subj').value='';
-}
-
-function sortLbl(s){ return {'name':'أبجدي','grade_desc':'الأعلى أولاً','grade_asc':'الأدنى أولاً','type':'النوع','governorate':'المحافظة'}[s]||s; }
-function fmtGrade(g,mx){ if(g==null) return '—'; const gf=g==Math.floor(g)?Math.floor(g):g; if(mx!=null){ const mf=mx==Math.floor(mx)?Math.floor(mx):mx; return `${gf}/${mf}`; } return String(gf); }
 </script>
 </body>
 </html>
