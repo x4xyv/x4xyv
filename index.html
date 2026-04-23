@@ -2,731 +2,671 @@
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>جدول المراجعة النهائية</title>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 @page { size: A4 landscape; margin: 7mm; }
 
-*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
-  --bg:       #080d14;
-  --surface:  #0f1520;
-  --card:     #0a0f1a;
-  --gold:     #d4af37;
-  --gold-dim: rgba(212,175,55,0.18);
-  --text:     #c9d1d9;
-  --muted:    #6e7681;
+  --bg: #070b12;
+  --panel: #101722;
+  --panel-2: #0c111a;
+  --line: rgba(255,255,255,0.07);
+  --text: #e7edf7;
+  --muted: #93a1b2;
+  --gold: #d4af37;
+  --gold-soft: rgba(212,175,55,0.14);
+  --zoom: 1;
+}
+
+html, body {
+  min-height: 100%;
 }
 
 body {
   font-family: 'Cairo', sans-serif;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top, rgba(124,58,237,0.15), transparent 34%),
+    linear-gradient(180deg, #0a0f17 0%, #070b12 100%);
   color: var(--text);
   direction: rtl;
-  padding: 18px 22px;
-  min-width: 1000px;
+  overflow-x: hidden;
+  padding: 14px 14px 110px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ═══════════════ HEADER ═══════════════ */
+.app-shell {
+  max-width: 1420px;
+  margin: 0 auto;
+}
+
 .header {
-  background: linear-gradient(145deg, #111827 0%, #0d1117 100%);
-  border: 1px solid rgba(212,175,55,0.28);
-  border-radius: 20px;
-  padding: 18px 28px 15px;
-  margin-bottom: 16px;
+  background: linear-gradient(180deg, rgba(16,23,34,0.98), rgba(10,14,22,0.98));
+  border: 1px solid rgba(212,175,55,0.24);
+  border-radius: 24px;
+  padding: 18px 18px 16px;
   text-align: center;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.32);
 }
+
 .header::before {
   content: '';
   position: absolute;
-  top: 0; left: 15%; right: 15%; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  border-radius: 2px;
-}
-.header::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 15%; right: 15%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent);
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.09), transparent);
+  transform: translateX(-35%);
+  pointer-events: none;
 }
 
 .htitle {
-  font-size: 1.45rem;
+  font-size: 1.42rem;
   font-weight: 900;
   color: var(--gold);
-  letter-spacing: 4px;
   margin-bottom: 10px;
+  letter-spacing: 0.5px;
+  unicode-bidi: plaintext;
 }
 
 .verse {
   font-family: 'Amiri', serif;
-  font-size: 1.18rem;
-  color: #eedd88;
-  line-height: 2.4;
+  font-size: 1.16rem;
+  color: #f1df95;
+  line-height: 2.1;
   margin-bottom: 6px;
+  unicode-bidi: plaintext;
 }
 
 .motiv {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #8b949e;
-  letter-spacing: 2.5px;
-  margin-bottom: 12px;
   font-family: 'Amiri', serif;
+  font-size: 0.95rem;
+  color: #c6ced9;
+  opacity: 0.88;
+  margin-bottom: 14px;
+  unicode-bidi: plaintext;
 }
 
 .note-box {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--gold-dim);
-  border: 1px solid rgba(212,175,55,0.35);
-  border-radius: 30px;
-  padding: 5px 18px;
-  font-size: 0.82rem;
+  background: var(--gold-soft);
+  border: 1px solid rgba(212,175,55,0.28);
   color: var(--gold);
-  font-weight: 600;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
-/* ═══════════════ LEGEND ═══════════════ */
 .legend {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  margin-bottom: 14px;
-  font-size: 0.78rem;
+  gap: 12px 18px;
+  margin: 12px 0 16px;
   color: var(--muted);
+  font-size: 0.8rem;
 }
-.li { display: flex; align-items: center; gap: 6px; }
-.lc {
-  width: 14px; height: 14px;
-  border-radius: 3px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 900;
-}
-.lc.le { border: 1.5px solid #475569; background: transparent; }
-.lc.ld { background: #15803d; border: 1.5px solid #22c55e; color: #bbf7d0; }
-.lc.lf { background: #991b1b; border: 1.5px solid #f87171; color: #fee2e2; }
-.sep { width: 1px; height: 14px; background: #30363d; }
 
-/* ═══════════════ SECTION ═══════════════ */
+.li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(255,255,255,0.14);
+}
+
+.lc {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.lc.le {
+  border: 1.5px solid #556173;
+  background: rgba(255,255,255,0.03);
+}
+
+.lc.ld {
+  border: 1.5px solid #22c55e;
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+.lc.lf {
+  border: 1.5px solid #f87171;
+  background: #7f1d1d;
+  color: #fee2e2;
+}
+
+.board-wrap {
+  display: block;
+  margin: 0 auto;
+}
+
+.board-zoom {
+  zoom: var(--zoom);
+}
+
+#board {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 6px;
+}
+
 .sec {
-  margin-bottom: 14px;
-  border-radius: 14px;
+  border-radius: 18px;
   overflow: hidden;
   border: 1px solid transparent;
+  background: rgba(255,255,255,0.02);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+}
+
+.sec.dragging {
+  opacity: 0.95;
+  transform: scale(1.01);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+
+.sec.placeholder {
+  border: 1px dashed rgba(212,175,55,0.55);
+  background: rgba(212,175,55,0.06);
 }
 
 .sec-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 18px;
-  font-size: 1rem;
+  gap: 10px;
+  padding: 10px 16px;
   font-weight: 800;
-}
-.sec-head .lft { display: flex; align-items: center; gap: 9px; }
-.sec-head .ico { font-size: 1.2rem; }
-.sec-head .rng {
-  font-size: 0.73rem; font-weight: 400; opacity: 0.7;
+  color: #fff;
 }
 
-/* ═══════════════ DAYS GRID ═══════════════ */
+.sec-head .lft {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.sec-head .lft:active {
+  cursor: grabbing;
+}
+
+.sec-head .title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+}
+
+.sec-head .ico {
+  font-size: 1.15rem;
+  flex: 0 0 auto;
+}
+
+.sec-head .drag-hint {
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.72;
+  white-space: nowrap;
+}
+
+.sec-head .rng {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.86;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1px;
-  background: rgba(255,255,255,0.045);
+  background: rgba(255,255,255,0.04);
 }
 
 .dc {
-  background: var(--card);
-  padding: 9px 11px 8px;
+  background: var(--panel-2);
+  padding: 10px 10px 9px;
+  min-height: 92px;
 }
 
 .dlbl {
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
   text-align: center;
-  padding: 3px 6px;
-  border-radius: 5px;
-  margin-bottom: 7px;
-  letter-spacing: 0.4px;
-  line-height: 1.4;
+  padding: 4px 7px;
+  border-radius: 7px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+  unicode-bidi: plaintext;
 }
 
 .task {
   display: flex;
+  gap: 7px;
   align-items: flex-start;
-  gap: 6px;
   margin-bottom: 5px;
   cursor: pointer;
   user-select: none;
-  transition: opacity 0.2s;
-  border-radius: 4px;
-  padding: 1px 2px;
+  border-radius: 6px;
+  padding: 2px 3px;
+  transition: background 0.18s, opacity 0.18s;
 }
-.task:hover { opacity: 0.82; }
-.task:last-child { margin-bottom: 0; }
 
-.cb {
-  width: 15px; height: 15px;
-  border: 1.5px solid #3d444d;
-  border-radius: 3px;
-  flex-shrink: 0;
-  margin-top: 2px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 900;
-  transition: all 0.15s;
+.task:hover {
   background: rgba(255,255,255,0.02);
 }
-.cb.done { background: #14532d; border-color: #22c55e; color: #86efac; }
-.cb.fail { background: #7f1d1d; border-color: #f87171; color: #fca5a5; }
+
+.task:last-child {
+  margin-bottom: 0;
+}
+
+.cb {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid #405062;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 900;
+  color: transparent;
+  background: rgba(255,255,255,0.02);
+}
+
+.cb.done {
+  background: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+.cb.fail {
+  background: #7f1d1d;
+  border-color: #f87171;
+  color: #fee2e2;
+}
 
 .ttxt {
-  font-size: 0.68rem;
-  line-height: 1.55;
-  color: #8d96a0;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: #aab4c0;
+  unicode-bidi: plaintext;
 }
-.task.tdone .ttxt { color: #3d444d; text-decoration: line-through; }
-.task.tfail .ttxt { color: #f87171; }
 
-/* ═══════════════ MATH — Blue ═══════════════ */
-.math { border-color: rgba(59,130,246,0.2); }
-.math .sec-head { background: linear-gradient(135deg, #0c2040 0%, #071529 100%); color: #93c5fd; }
+.task.tdone .ttxt {
+  text-decoration: line-through;
+  color: #566273;
+}
+
+.task.tfail .ttxt {
+  color: #fb7185;
+}
+
+.math { border-color: rgba(59,130,246,0.22); }
+.math .sec-head { background: linear-gradient(135deg, #0b1f41, #081328); color: #93c5fd; }
 .math .dlbl { background: rgba(59,130,246,0.12); color: #60a5fa; }
 
-/* ═══════════════ CHEM — Emerald ═══════════════ */
-.chem { border-color: rgba(34,197,94,0.2); }
-.chem .sec-head { background: linear-gradient(135deg, #052e1a 0%, #031810 100%); color: #86efac; }
+.chem { border-color: rgba(34,197,94,0.22); }
+.chem .sec-head { background: linear-gradient(135deg, #06311b, #041810); color: #86efac; }
 .chem .dlbl { background: rgba(34,197,94,0.1); color: #4ade80; }
 
-/* ═══════════════ PHYSICS — Amber ═══════════════ */
-.physics { border-color: rgba(251,146,60,0.2); }
-.physics .sec-head { background: linear-gradient(135deg, #2c1205 0%, #180900 100%); color: #fdba74; }
+.physics { border-color: rgba(251,146,60,0.22); }
+.physics .sec-head { background: linear-gradient(135deg, #321505, #170900); color: #fdba74; }
 .physics .dlbl { background: rgba(251,146,60,0.1); color: #fb923c; }
 
-/* ═══════════════ ARABIC — Violet ═══════════════ */
-.arabic { border-color: rgba(167,139,250,0.2); }
-.arabic .sec-head { background: linear-gradient(135deg, #1e0a4a 0%, #110530 100%); color: #c4b5fd; }
+.arabic { border-color: rgba(167,139,250,0.22); }
+.arabic .sec-head { background: linear-gradient(135deg, #23104f, #12072a); color: #c4b5fd; }
 .arabic .dlbl { background: rgba(167,139,250,0.1); color: #a78bfa; }
 
-/* ═══════════════ ISLAMIC — Teal ═══════════════ */
-.islamic { border-color: rgba(20,184,166,0.2); }
-.islamic .sec-head { background: linear-gradient(135deg, #042f2b 0%, #021e1b 100%); color: #5eead4; }
+.islamic { border-color: rgba(20,184,166,0.22); }
+.islamic .sec-head { background: linear-gradient(135deg, #08312d, #031f1c); color: #5eead4; }
 .islamic .dlbl { background: rgba(20,184,166,0.1); color: #2dd4bf; }
 
-/* ═══════════════ PRINT ═══════════════ */
-@media print {
-  body { background: #fff; color: #111; min-width: unset; padding: 0; }
-  .dc { background: #fff; }
-  .header { background: #fdf8ee; border-color: rgba(180,140,20,0.4); }
-  .verse { color: #7c5c00; }
-  .motiv { color: #555; }
-  .ttxt { color: #333; }
-  .task.tdone .ttxt { color: #999; }
-  .cb { border-color: #aaa; background: #fff; }
-  .cb.done { background: #dcfce7; border-color: #16a34a; color: #166534; }
-  .cb.fail { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
-  .grid { background: #ddd; }
-  .sec-head { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .dlbl { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .export-bar, .export-overlay { display: none !important; }
+.toolbar {
+  position: sticky;
+  top: 10px;
+  z-index: 50;
+  margin: 14px auto 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  background: rgba(8,12,18,0.72);
+  border: 1px solid rgba(212,175,55,0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 999px;
+  padding: 10px 12px;
+  max-width: 100%;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.35);
 }
 
-/* ═══════════════ EXPORT BAR ═══════════════ */
+.tb-label {
+  font-size: 0.78rem;
+  color: rgba(212,175,55,0.82);
+  font-weight: 700;
+  padding-left: 8px;
+  border-left: 1px solid rgba(212,175,55,0.15);
+  white-space: nowrap;
+}
+
+.tb-btn {
+  border: 1px solid rgba(212,175,55,0.24);
+  background: rgba(255,255,255,0.05);
+  color: #e7c76a;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tb-btn:hover {
+  background: rgba(212,175,55,0.12);
+}
+
+.tb-btn:active {
+  transform: scale(0.98);
+}
+
+.tb-btn.small {
+  min-width: 46px;
+  padding-inline: 12px;
+}
+
+.zoom-readout {
+  min-width: 74px;
+  text-align: center;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .export-bar {
   position: fixed;
-  bottom: 22px;
   left: 50%;
+  bottom: 16px;
   transform: translateX(-50%);
+  z-index: 100;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  background: rgba(8,13,20,0.92);
-  border: 1px solid rgba(212,175,55,0.38);
-  border-radius: 50px;
-  padding: 9px 16px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  z-index: 999;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,175,55,0.08);
-  direction: rtl;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(8,12,18,0.92);
+  border: 1px solid rgba(212,175,55,0.22);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55);
 }
 
 .exp-label {
-  font-size: 0.75rem;
-  color: rgba(212,175,55,0.6);
-  font-weight: 600;
-  padding-left: 8px;
-  border-left: 1px solid rgba(212,175,55,0.2);
-  margin-left: 2px;
+  color: rgba(212,175,55,0.72);
+  font-size: 0.78rem;
+  font-weight: 700;
   white-space: nowrap;
+  padding-left: 8px;
+  border-left: 1px solid rgba(212,175,55,0.16);
 }
 
 .exp-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(212,175,55,0.28);
-  border-radius: 30px;
-  padding: 7px 17px;
-  color: #d4af37;
-  font-family: 'Cairo', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 700;
+  border-radius: 999px;
+  padding: 8px 14px;
+  border: 1px solid rgba(212,175,55,0.22);
+  background: rgba(255,255,255,0.05);
+  color: #d8b95b;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
 }
-.exp-btn:hover {
-  background: rgba(212,175,55,0.13);
-  border-color: var(--gold);
-  transform: translateY(-1px);
-}
-.exp-btn:active { transform: scale(0.96) translateY(0); }
-.exp-btn:disabled { opacity: 0.45; cursor: wait; transform: none; }
-.exp-btn .eico { font-size: 1rem; line-height: 1; }
 
-/* ═══════════════ OVERLAY ═══════════════ */
+.exp-btn:hover {
+  background: rgba(212,175,55,0.12);
+}
+
+.exp-btn:disabled, .tb-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 .export-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.75);
   z-index: 9999;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 18px;
+  background: rgba(0,0,0,0.7);
   backdrop-filter: blur(4px);
 }
-.export-overlay.show { display: flex; }
+
+.export-overlay.show {
+  display: flex;
+}
 
 .ov-box {
-  background: #0f1520;
-  border: 1px solid rgba(212,175,55,0.35);
-  border-radius: 20px;
-  padding: 32px 44px;
+  min-width: 280px;
+  padding: 30px 34px;
+  border-radius: 22px;
+  background: #0f1621;
+  border: 1px solid rgba(212,175,55,0.24);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  min-width: 260px;
+  gap: 14px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5);
 }
 
 .ov-spinner {
-  width: 44px; height: 44px;
-  border: 3px solid rgba(212,175,55,0.15);
-  border-top-color: #d4af37;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
+  border: 3px solid rgba(212,175,55,0.14);
+  border-top-color: #d4af37;
   animation: spin 0.8s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .ov-msg {
-  font-size: 0.95rem;
-  font-weight: 700;
   color: var(--gold);
+  font-size: 1rem;
+  font-weight: 800;
 }
+
 .ov-sub {
-  font-size: 0.75rem;
   color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 720px) {
+  body {
+    padding-inline: 10px;
+  }
+
+  .header {
+    border-radius: 20px;
+    padding-inline: 12px;
+  }
+
+  .htitle {
+    font-size: 1.22rem;
+  }
+
+  .verse {
+    font-size: 1rem;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  }
+
+  .toolbar {
+    border-radius: 20px;
+    padding: 10px;
+  }
+
+  .export-bar {
+    bottom: 10px;
+    width: calc(100% - 20px);
+    justify-content: center;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+    padding: 0;
+    color: #111;
+  }
+
+  .toolbar, .export-bar, .export-overlay {
+    display: none !important;
+  }
+
+  .header {
+    background: #fdf8ee;
+    border-color: rgba(180,140,20,0.35);
+    box-shadow: none;
+  }
+
+  .verse {
+    color: #7c5c00;
+  }
+
+  .motiv {
+    color: #444;
+  }
+
+  .board-wrap, .board-zoom {
+    zoom: 1 !important;
+  }
+
+  .sec {
+    box-shadow: none;
+  }
+
+  .dc {
+    background: #fff;
+  }
+
+  .ttxt {
+    color: #333;
+  }
+
+  .task.tdone .ttxt {
+    color: #999;
+  }
+
+  .cb {
+    border-color: #aaa;
+    background: #fff;
+  }
+
+  .cb.done {
+    background: #dcfce7;
+    border-color: #16a34a;
+    color: #166534;
+  }
+
+  .cb.fail {
+    background: #fee2e2;
+    border-color: #dc2626;
+    color: #991b1b;
+  }
+
+  .grid {
+    background: #ddd;
+  }
+
+  .sec-head, .dlbl {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }
 </style>
 </head>
 <body>
+<div class="app-shell" id="appShell">
 
-<!-- ══════ HEADER ══════ -->
-<div class="header">
-  <div class="htitle">📚 جدول المراجعة النهائية</div>
-  <div class="verse">﴿وَالَّذِينَ جَاهَدُوا فِينَا لَنَهْدِيَنَّهُمْ سُبُلَنَا ۚ وَإِنَّ اللَّهَ لَمَعَ الْمُحْسِنِينَ﴾</div>
-  <div class="motiv">صَبْرُ الشَّجَاعِ فِي مَيَادِينِ الْعِلْمِ</div>
-  <span class="note-box">⚡ ملاحظة: في أي فراغ ندرس «أدب» أو «إسلامية»</span>
+  <div class="toolbar" id="toolbar">
+    <span class="tb-label">⚙️ أدوات العرض</span>
+    <button class="tb-btn small" id="zoomOut" type="button">−</button>
+    <div class="zoom-readout" id="zoomReadout">100%</div>
+    <button class="tb-btn small" id="zoomIn" type="button">+</button>
+    <button class="tb-btn" id="zoomReset" type="button">إعادة الضبط</button>
+  </div>
+
+  <div id="captureRoot">
+    <div class="header">
+      <div class="htitle">📚 جدول المراجعة النهائية</div>
+      <div class="verse">﴿وَالَّذِينَ جَاهَدُوا فِينَا لَنَهْدِيَنَّهُمْ سُبُلَنَا ۚ وَإِنَّ اللَّهَ لَمَعَ الْمُحْسِنِينَ﴾</div>
+      <div class="motiv">صَبْرُ الشَّجَاعِ فِي مَيَادِينِ الْعِلْمِ</div>
+      <span class="note-box">⚡ ملاحظة: في أي فراغ ندرس «أدب» أو «إسلامية»</span>
+    </div>
+
+    <div class="legend">
+      <div class="li"><div class="lc le"></div><span>لم تبدأ بعد</span></div>
+      <div class="sep"></div>
+      <div class="li"><div class="lc ld">✓</div><span>مكتملة</span></div>
+      <div class="sep"></div>
+      <div class="li"><div class="lc lf">✗</div><span>غير مكتملة</span></div>
+      <div class="sep"></div>
+      <span>اضغط ضغطة مطوّلة على اسم المادة ثم اسحبها لتغيير الترتيب</span>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board-zoom" id="boardZoom">
+        <div id="board"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- ══════ LEGEND ══════ -->
-<div class="legend">
-  <div class="li"><div class="lc le"></div><span>لم تبدأ بعد</span></div>
-  <div class="sep"></div>
-  <div class="li"><div class="lc ld">✓</div><span>مكتملة</span></div>
-  <div class="sep"></div>
-  <div class="li"><div class="lc lf">✗</div><span>غير مكتملة</span></div>
-  <div class="sep"></div>
-  <span style="font-size:0.75rem;color:#475569">اضغط على المربع للتبديل بين الحالات</span>
-</div>
-
-<!-- ══════════════════════════════════════ -->
-<!--          1. الرياضيات                 -->
-<!-- ══════════════════════════════════════ -->
-<div class="sec math">
-  <div class="sec-head">
-    <div class="lft"><span class="ico">📐</span> الرياضيات</div>
-    <span class="rng">٢٥/٤ — ٢/٥ &nbsp;·&nbsp; ٨ أيام</span>
-  </div>
-  <div class="grid">
-
-    <!-- 4/25 -->
-    <div class="dc">
-      <div class="dlbl">السبت ٢٥/٤</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الأول</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الأول</span></div>
-    </div>
-
-    <!-- 4/26 -->
-    <div class="dc">
-      <div class="dlbl">الأحد ٢٦/٤</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الثاني</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الثاني</span></div>
-    </div>
-
-    <!-- 4/27 -->
-    <div class="dc">
-      <div class="dlbl">الاثنين ٢٧/٤</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الثالث ج١</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الثالث ج١</span></div>
-    </div>
-
-    <!-- 4/28 -->
-    <div class="dc">
-      <div class="dlbl">الثلاثاء ٢٨/٤</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الثالث ج٢</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الثالث ج٢</span></div>
-    </div>
-
-    <!-- 4/29 -->
-    <div class="dc">
-      <div class="dlbl">الأربعاء ٢٩/٤</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الرابع ج١</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الرابع ج١</span></div>
-    </div>
-
-    <!-- 4/30 -->
-    <div class="dc">
-      <div class="dlbl">الخميس ٣٠/٤</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الرابع ج٢</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الرابع ج٢</span></div>
-    </div>
-
-    <!-- 5/1 -->
-    <div class="dc">
-      <div class="dlbl">الجمعة ١/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ ص — محاضرة الفصل الخامس</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">٨:٠٠ م — امتحان الفصل الخامس</span></div>
-    </div>
-
-    <!-- 5/2 -->
-    <div class="dc">
-      <div class="dlbl">السبت ٢/٥ ⭐</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة كاملة</span></div>
-    </div>
-
-  </div><!-- /grid -->
-</div><!-- /math -->
-
-
-<!-- ══════════════════════════════════════ -->
-<!--            2. الكيمياء                -->
-<!-- ══════════════════════════════════════ -->
-<div class="sec chem">
-  <div class="sec-head">
-    <div class="lft"><span class="ico">🧪</span> الكيمياء</div>
-    <span class="rng">٣/٥ — ٩/٥ &nbsp;·&nbsp; ٧ أيام</span>
-  </div>
-  <div class="grid">
-
-    <!-- 5/3 -->
-    <div class="dc">
-      <div class="dlbl">الأحد ٣/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — شرحيات</span></div>
-    </div>
-
-    <!-- 5/4 -->
-    <div class="dc">
-      <div class="dlbl">الاثنين ٤/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — شرحيات</span></div>
-    </div>
-
-    <!-- 5/5 -->
-    <div class="dc">
-      <div class="dlbl">الثلاثاء ٥/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — شرحيات</span></div>
-    </div>
-
-    <!-- 5/6 -->
-    <div class="dc">
-      <div class="dlbl">الأربعاء ٦/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — شرحيات</span></div>
-    </div>
-
-    <!-- 5/7 -->
-    <div class="dc">
-      <div class="dlbl">الخميس ٧/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — شرحيات</span></div>
-    </div>
-
-    <!-- 5/8–9 -->
-    <div class="dc">
-      <div class="dlbl">الجمعة–السبت ٨–٩/٥ ⭐</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">إكمال ما تبقى من المادة</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة</span></div>
-    </div>
-
-  </div>
-</div><!-- /chem -->
-
-
-<!-- ══════════════════════════════════════ -->
-<!--            3. الفيزياء                -->
-<!-- ══════════════════════════════════════ -->
-<div class="sec physics">
-  <div class="sec-head">
-    <div class="lft"><span class="ico">⚛️</span> الفيزياء</div>
-    <span class="rng">١٠/٥ — ٢٠/٥ &nbsp;·&nbsp; ١١ يوماً</span>
-  </div>
-  <div class="grid">
-
-    <!-- 5/10 -->
-    <div class="dc">
-      <div class="dlbl">الأحد ١٠/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الأول — شرحيات</span></div>
-    </div>
-
-    <!-- 5/11 -->
-    <div class="dc">
-      <div class="dlbl">الاثنين ١١/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثاني — شرحيات</span></div>
-    </div>
-
-    <!-- 5/12 -->
-    <div class="dc">
-      <div class="dlbl">الثلاثاء ١٢/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثالث — شرحيات</span></div>
-    </div>
-
-    <!-- 5/13 -->
-    <div class="dc">
-      <div class="dlbl">الأربعاء ١٣/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الرابع — شرحيات</span></div>
-    </div>
-
-    <!-- 5/14 -->
-    <div class="dc">
-      <div class="dlbl">الخميس ١٤/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الخامس — شرحيات</span></div>
-    </div>
-
-    <!-- 5/15 -->
-    <div class="dc">
-      <div class="dlbl">الجمعة ١٥/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السادس — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السادس — شرحيات</span></div>
-    </div>
-
-    <!-- 5/16 -->
-    <div class="dc">
-      <div class="dlbl">السبت ١٦/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السابع — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل السابع — شرحيات</span></div>
-    </div>
-
-    <!-- 5/17 -->
-    <div class="dc">
-      <div class="dlbl">الأحد ١٧/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثامن — مسائل</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">الفصل الثامن — شرحيات</span></div>
-    </div>
-
-    <!-- 5/18–20 -->
-    <div class="dc">
-      <div class="dlbl">الاثنين–الأربعاء ١٨–٢٠/٥ ⭐</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">إكمال ما تبقى من المادة</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة</span></div>
-    </div>
-
-  </div>
-</div><!-- /physics -->
-
-
-<!-- ══════════════════════════════════════ -->
-<!--          4. اللغة العربية             -->
-<!-- ══════════════════════════════════════ -->
-<div class="sec arabic">
-  <div class="sec-head">
-    <div class="lft"><span class="ico">✍️</span> اللغة العربية</div>
-    <span class="rng">٢١/٥ — ٣١/٥ &nbsp;·&nbsp; ١١ يوماً</span>
-  </div>
-  <div class="grid">
-
-    <!-- 5/21 -->
-    <div class="dc">
-      <div class="dlbl">الخميس ٢١/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب الاستفهام</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/22 -->
-    <div class="dc">
-      <div class="dlbl">الجمعة ٢٢/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب النفي ١</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/23 -->
-    <div class="dc">
-      <div class="dlbl">السبت ٢٣/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب النفي ٢</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/24 -->
-    <div class="dc">
-      <div class="dlbl">الأحد ٢٤/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التقديم والتأخير</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/25 -->
-    <div class="dc">
-      <div class="dlbl">الاثنين ٢٥/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التوكيد</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/26 -->
-    <div class="dc">
-      <div class="dlbl">الثلاثاء ٢٦/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب النداء</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/27 -->
-    <div class="dc">
-      <div class="dlbl">الأربعاء ٢٧/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التعجب</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/28 -->
-    <div class="dc">
-      <div class="dlbl">الخميس ٢٨/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب المدح والذم</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/29 -->
-    <div class="dc">
-      <div class="dlbl">الجمعة ٢٩/٥</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب التمني والترجي</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قواعد أسلوب العرض والتحضيض</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">قليل من الأدب</span></div>
-    </div>
-
-    <!-- 5/30–31 -->
-    <div class="dc">
-      <div class="dlbl">السبت–الأحد ٣٠–٣١/٥ ⭐</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">إكمال ما تبقى من المادة</span></div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">امتحان شامل للمادة</span></div>
-    </div>
-
-  </div>
-</div><!-- /arabic -->
-
-
-<!-- ══════════════════════════════════════ -->
-<!--           5. الإسلامية                -->
-<!-- ══════════════════════════════════════ -->
-<div class="sec islamic">
-  <div class="sec-head">
-    <div class="lft"><span class="ico">☪️</span> الإسلامية</div>
-    <span class="rng">١/٦ — ١٢/٦ &nbsp;·&nbsp; ١٢ يوماً</span>
-  </div>
-  <div class="grid">
-
-    <div class="dc">
-      <div class="dlbl">الاثنين ١/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الثلاثاء ٢/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الأربعاء ٣/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الخميس ٤/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الجمعة ٥/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">السبت ٦/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الأحد ٧/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الاثنين ٨/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الثلاثاء ٩/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الأربعاء ١٠/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الخميس ١١/٦</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">دراسة الإسلامية</span></div>
-    </div>
-
-    <div class="dc">
-      <div class="dlbl">الجمعة ١٢/٦ ⭐</div>
-      <div class="task" onclick="tog(this)"><div class="cb"></div><span class="ttxt">مراجعة شاملة للإسلامية</span></div>
-    </div>
-
-  </div>
-</div><!-- /islamic -->
-
-
-<!-- ══════ EXPORT OVERLAY ══════ -->
 <div class="export-overlay" id="overlay">
   <div class="ov-box">
     <div class="ov-spinner"></div>
@@ -735,158 +675,875 @@ body {
   </div>
 </div>
 
-<!-- ══════ EXPORT BAR ══════ -->
 <div class="export-bar" id="exportBar">
   <span class="exp-label">📤 تصدير الجدول</span>
-  <button class="exp-btn" id="btnImg" onclick="exportImage()">
-    <span class="eico">🖼️</span> صورة PNG
-  </button>
-  <button class="exp-btn" id="btnPdf" onclick="exportPDF()">
-    <span class="eico">📄</span> ملف PDF
-  </button>
+  <button class="exp-btn" id="btnImg" type="button">🖼️ صورة PNG</button>
+  <button class="exp-btn" id="btnPdf" type="button">📄 ملف PDF</button>
 </div>
 
 <script>
-/* ─── Toggle checkbox: empty → done(✓) → fail(✗) → empty ─── */
-function tog(el) {
-  const cb  = el.querySelector('.cb');
-  const s   = parseInt(cb.dataset.s || '0');
-  const nxt = (s + 1) % 3;
+const BASE_YEAR = 2026;
+const BASE_MONTH = 3; // April = 3
+const BASE_DAY = 25;
 
-  const cbCls   = ['',     'done',   'fail'];
-  const cbIcon  = ['',     '✓',      '✗'];
-  const taskCls = ['task', 'task tdone', 'task tfail'];
+const STORAGE_ORDER = 'sched_order_v3';
+const STORAGE_STATES = 'sched_states_v3';
+const STORAGE_ZOOM = 'sched_zoom_v3';
 
-  cb.dataset.s  = nxt;
-  cb.className  = 'cb' + (nxt ? ' ' + cbCls[nxt] : '');
-  cb.textContent = cbIcon[nxt];
-  el.className  = taskCls[nxt];
+const scheduleData = [
+  {
+    "key": "math",
+    "className": "math",
+    "icon": "📐",
+    "title": "الرياضيات",
+    "cells": [
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "٨:٠٠ ص — محاضرة الفصل الأول",
+          "٨:٠٠ م — امتحان الفصل الأول"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "٨:٠٠ ص — محاضرة الفصل الثاني",
+          "٨:٠٠ م — امتحان الفصل الثاني"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "٨:٠٠ ص — محاضرة الفصل الثالث ج١",
+          "٨:٠٠ م — امتحان الفصل الثالث ج١"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "٨:٠٠ ص — محاضرة الفصل الثالث ج٢",
+          "٨:٠٠ م — امتحان الفصل الثالث ج٢"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "٨:٠٠ ص — محاضرة الفصل الرابع ج١",
+          "٨:٠٠ م — امتحان الفصل الرابع ج١"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "٨:٠٠ ص — محاضرة الفصل الرابع ج٢",
+          "٨:٠٠ م — امتحان الفصل الرابع ج٢"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "٨:٠٠ ص — محاضرة الفصل الخامس",
+          "٨:٠٠ م — امتحان الفصل الخامس"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": true,
+        "tasks": [
+          "امتحان شامل للمادة كاملة"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "chem",
+    "className": "chem",
+    "icon": "🧪",
+    "title": "الكيمياء",
+    "cells": [
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الخامس — مسائل",
+          "الفصل الخامس — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الرابع — مسائل",
+          "الفصل الرابع — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الثالث — مسائل",
+          "الفصل الثالث — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الثاني — مسائل",
+          "الفصل الثاني — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الأول — مسائل",
+          "الفصل الأول — شرحيات"
+        ]
+      },
+      {
+        "span": 2,
+        "starred": true,
+        "tasks": [
+          "إكمال ما تبقى من المادة",
+          "امتحان شامل للمادة"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "physics",
+    "className": "physics",
+    "icon": "⚛️",
+    "title": "الفيزياء",
+    "cells": [
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الأول — مسائل",
+          "الفصل الأول — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الثاني — مسائل",
+          "الفصل الثاني — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الثالث — مسائل",
+          "الفصل الثالث — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الرابع — مسائل",
+          "الفصل الرابع — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الخامس — مسائل",
+          "الفصل الخامس — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل السادس — مسائل",
+          "الفصل السادس — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل السابع — مسائل",
+          "الفصل السابع — شرحيات"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "الفصل الثامن — مسائل",
+          "الفصل الثامن — شرحيات"
+        ]
+      },
+      {
+        "span": 3,
+        "starred": true,
+        "tasks": [
+          "إكمال ما تبقى من المادة",
+          "امتحان شامل للمادة"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "arabic",
+    "className": "arabic",
+    "icon": "✍️",
+    "title": "اللغة العربية",
+    "cells": [
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب الاستفهام",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب النفي ١",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب النفي ٢",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب التقديم والتأخير",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب التوكيد",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب النداء",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب التعجب",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب المدح والذم",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "قواعد أسلوب التمني والترجي",
+          "قواعد أسلوب العرض والتحضيض",
+          "قليل من الأدب"
+        ]
+      },
+      {
+        "span": 2,
+        "starred": true,
+        "tasks": [
+          "إكمال ما تبقى من المادة",
+          "امتحان شامل للمادة"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "islamic",
+    "className": "islamic",
+    "icon": "☪️",
+    "title": "الإسلامية",
+    "cells": [
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": false,
+        "tasks": [
+          "دراسة الإسلامية"
+        ]
+      },
+      {
+        "span": 1,
+        "starred": true,
+        "tasks": [
+          "مراجعة شاملة للإسلامية"
+        ]
+      }
+    ]
+  }
+];
 
-  save();
+const weekdayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+const stateStore = loadJSON(STORAGE_STATES, {});
+let dragState = null;
+
+function loadJSON(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    if (!value) return fallback;
+    return JSON.parse(value);
+  } catch (e) {
+    return fallback;
+  }
 }
 
-/* ─── Persist to localStorage ─── */
-function save() {
-  const data = {};
-  document.querySelectorAll('.cb').forEach((cb, i) => {
-    data[i] = cb.dataset.s || '0';
+function saveJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {}
+}
+
+function toArabicDigits(value) {
+  return String(value).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function fmtDM(date) {
+  return `${toArabicDigits(date.getDate())}/${toArabicDigits(date.getMonth() + 1)}`;
+}
+
+function weekdayAr(date) {
+  return weekdayNames[date.getDay()];
+}
+
+function formatCellLabel(startDate, span, starred) {
+  const endDate = addDays(startDate, span - 1);
+  let label = span === 1
+    ? `${weekdayAr(startDate)} ${fmtDM(startDate)}`
+    : `${weekdayAr(startDate)}–${weekdayAr(endDate)} ${toArabicDigits(startDate.getDate())}–${toArabicDigits(endDate.getDate())}/${toArabicDigits(endDate.getMonth() + 1)}`;
+  if (starred) label += ' ⭐';
+  return label;
+}
+
+function formatRange(startDate, endDate, daysCount) {
+  return `${fmtDM(startDate)} — ${fmtDM(endDate)} · ${toArabicDigits(daysCount)} أيام`;
+}
+
+function getOrder() {
+  const saved = loadJSON(STORAGE_ORDER, null);
+  if (Array.isArray(saved) && saved.length) return saved;
+  return scheduleData.map(s => s.key);
+}
+
+function saveOrderFromDOM() {
+  const order = Array.from(document.querySelectorAll('#board .sec')).map(sec => sec.dataset.key);
+  saveJSON(STORAGE_ORDER, order);
+}
+
+function renderBoard() {
+  const order = getOrder();
+  const seen = new Set();
+  const ordered = [];
+  order.forEach(key => {
+    const found = scheduleData.find(s => s.key === key);
+    if (found && !seen.has(found.key)) {
+      ordered.push(found);
+      seen.add(found.key);
+    }
   });
-  try { localStorage.setItem('sched_v1', JSON.stringify(data)); } catch(e){}
+  scheduleData.forEach(sec => {
+    if (!seen.has(sec.key)) ordered.push(sec);
+  });
+
+  let html = '';
+  ordered.forEach(sec => {
+    html += sectionHTML(sec);
+  });
+
+  document.getElementById('board').innerHTML = html;
+  applySavedStates();
+  reflowDates();
+  setupTaskToggles();
+  setupDragHandles();
 }
 
-function load() {
-  let data;
-  try { data = JSON.parse(localStorage.getItem('sched_v1')); } catch(e){ return; }
-  if (!data) return;
+function sectionHTML(sec) {
+  const cellsHTML = sec.cells.map((cell, ci) => {
+    const tasksHTML = cell.tasks.map((task, ti) => {
+      const id = `${sec.key}-${ci}-${ti}`;
+      return `
+        <div class="task" data-id="${id}">
+          <div class="cb"></div>
+          <span class="ttxt">${escapeHTML(task)}</span>
+        </div>`;
+    }).join('');
 
-  const cbCls   = ['',     'done',   'fail'];
-  const cbIcon  = ['',     '✓',      '✗'];
-  const taskCls = ['task', 'task tdone', 'task tfail'];
+    return `
+      <div class="dc" data-span="${cell.span}" data-starred="${cell.starred ? '1' : '0'}" data-cell-index="${ci}">
+        <div class="dlbl">...</div>
+        ${tasksHTML}
+      </div>`;
+  }).join('');
 
-  document.querySelectorAll('.cb').forEach((cb, i) => {
-    const s = parseInt(data[i] || '0');
-    if (!s) return;
-    cb.dataset.s   = s;
-    cb.className   = 'cb ' + cbCls[s];
-    cb.textContent = cbIcon[s];
-    const t = cb.closest('.task');
-    if (t) t.className = taskCls[s];
+  return `
+    <section class="sec ${sec.className}" data-key="${sec.key}">
+      <div class="sec-head">
+        <div class="lft sec-handle" title="اضغط مطولًا ثم اسحب">
+          <span class="ico">${escapeHTML(sec.icon || '')}</span>
+          <span class="title">${escapeHTML(sec.title)}</span>
+          <span class="drag-hint">↕</span>
+        </div>
+        <span class="rng">...</span>
+      </div>
+      <div class="grid">
+        ${cellsHTML}
+      </div>
+    </section>`;
+}
+
+function escapeHTML(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function reflowDates() {
+  let cursor = new Date(BASE_YEAR, BASE_MONTH, BASE_DAY);
+  const sections = document.querySelectorAll('#board .sec');
+
+  sections.forEach(sec => {
+    const cells = sec.querySelectorAll('.dc');
+    const sectionStart = new Date(cursor);
+    let sectionSpan = 0;
+    let cellCursor = new Date(sectionStart);
+
+    cells.forEach(cell => {
+      const span = Number(cell.dataset.span || 1);
+      const starred = cell.dataset.starred === '1';
+      const labelEl = cell.querySelector('.dlbl');
+      const start = new Date(cellCursor);
+      const end = addDays(start, span - 1);
+      labelEl.textContent = formatCellLabel(start, span, starred);
+      cell.dataset.start = start.toISOString();
+      cell.dataset.end = end.toISOString();
+      cellCursor = addDays(end, 1);
+      sectionSpan += span;
+    });
+
+    const sectionEnd = addDays(sectionStart, sectionSpan - 1);
+    const rng = sec.querySelector('.rng');
+    rng.textContent = formatRange(sectionStart, sectionEnd, sectionSpan);
+    sec.dataset.start = sectionStart.toISOString();
+    sec.dataset.end = sectionEnd.toISOString();
+    sec.dataset.span = String(sectionSpan);
+    cursor = addDays(sectionEnd, 1);
   });
 }
 
-window.addEventListener('DOMContentLoaded', load);
-
-/* ═══════════════ EXPORT HELPERS ═══════════════ */
-function showOverlay(msg, sub) {
-  document.getElementById('ov-msg').textContent = msg || 'جارٍ المعالجة...';
-  document.getElementById('ov-sub').textContent = sub || 'الرجاء الانتظار، قد يستغرق بعض الوقت';
-  document.getElementById('overlay').classList.add('show');
-}
-function hideOverlay() {
-  document.getElementById('overlay').classList.remove('show');
-}
-function setBtns(disabled) {
-  document.getElementById('btnImg').disabled = disabled;
-  document.getElementById('btnPdf').disabled = disabled;
+function getTaskState(id) {
+  const v = stateStore[id];
+  return v === 1 || v === 2 ? v : 0;
 }
 
-/* ─── Capture full page canvas ─── */
+function applySavedStates() {
+  document.querySelectorAll('.task').forEach(task => {
+    const id = task.dataset.id;
+    const cb = task.querySelector('.cb');
+    const state = getTaskState(id);
+    task.classList.remove('tdone', 'tfail');
+    cb.className = 'cb';
+    cb.textContent = '';
+    if (state === 1) {
+      cb.classList.add('done');
+      cb.textContent = '✓';
+      task.classList.add('tdone');
+    } else if (state === 2) {
+      cb.classList.add('fail');
+      cb.textContent = '✗';
+      task.classList.add('tfail');
+    }
+  });
+}
+
+function setTaskState(taskEl, state) {
+  const id = taskEl.dataset.id;
+  if (state === 0) {
+    delete stateStore[id];
+  } else {
+    stateStore[id] = state;
+  }
+  saveJSON(STORAGE_STATES, stateStore);
+
+  const cb = taskEl.querySelector('.cb');
+  taskEl.classList.remove('tdone', 'tfail');
+  cb.className = 'cb';
+
+  if (state === 1) {
+    cb.classList.add('done');
+    cb.textContent = '✓';
+    taskEl.classList.add('tdone');
+  } else if (state === 2) {
+    cb.classList.add('fail');
+    cb.textContent = '✗';
+    taskEl.classList.add('tfail');
+  } else {
+    cb.textContent = '';
+  }
+}
+
+function toggleTask(taskEl) {
+  const current = getTaskState(taskEl.dataset.id);
+  const next = (current + 1) % 3;
+  setTaskState(taskEl, next);
+}
+
+function setupTaskToggles() {
+  document.querySelectorAll('.task').forEach(task => {
+    task.addEventListener('click', function (e) {
+      if (e.target.closest('.sec-handle')) return;
+      toggleTask(task);
+    });
+  });
+}
+
+function setupZoom() {
+  const root = document.documentElement;
+  const readout = document.getElementById('zoomReadout');
+  const current = Number(loadJSON(STORAGE_ZOOM, 1));
+
+  function clampZoom(v) {
+    return Math.min(1.35, Math.max(0.78, Math.round(v * 100) / 100));
+  }
+
+  function applyZoom(v) {
+    const z = clampZoom(v);
+    root.style.setProperty('--zoom', String(z));
+    readout.textContent = `${Math.round(z * 100)}%`;
+    saveJSON(STORAGE_ZOOM, z);
+  }
+
+  document.getElementById('zoomOut').addEventListener('click', () => {
+    applyZoom(Number(getComputedStyle(root).getPropertyValue('--zoom') || current) - 0.08);
+  });
+
+  document.getElementById('zoomIn').addEventListener('click', () => {
+    applyZoom(Number(getComputedStyle(root).getPropertyValue('--zoom') || current) + 0.08);
+  });
+
+  document.getElementById('zoomReset').addEventListener('click', () => {
+    applyZoom(1);
+  });
+
+  applyZoom(current || 1);
+}
+
+function setupDragHandles() {
+  document.querySelectorAll('.sec-handle').forEach(handle => {
+    handle.oncontextmenu = e => e.preventDefault();
+    handle.addEventListener('pointerdown', onHandlePointerDown, { passive: false });
+  });
+}
+
+function onHandlePointerDown(e) {
+  if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+  const handle = e.currentTarget;
+  const sec = handle.closest('.sec');
+  if (!sec) return;
+
+  e.preventDefault();
+
+  const startX = e.clientX;
+  const startY = e.clientY;
+  let dragStarted = false;
+  let dragTimer = null;
+
+  const cleanup = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+    clearTimeout(dragTimer);
+  };
+
+  const startDrag = () => {
+    if (dragStarted) return;
+    dragStarted = true;
+
+    const rect = sec.getBoundingClientRect();
+    const placeholder = document.createElement('section');
+    placeholder.className = `sec placeholder ${sec.classList[1] || ''}`;
+    placeholder.style.height = rect.height + 'px';
+    placeholder.dataset.placeholder = '1';
+
+    sec.parentNode.insertBefore(placeholder, sec.nextSibling);
+
+    const currentZoom = getComputedStyle(document.documentElement).getPropertyValue('--zoom').trim() || '1';
+
+    sec.classList.add('dragging');
+    sec.style.position = 'fixed';
+    sec.style.left = rect.left + 'px';
+    sec.style.top = rect.top + 'px';
+    sec.style.width = rect.width + 'px';
+    sec.style.zIndex = '9999';
+    sec.style.pointerEvents = 'none';
+    sec.style.zoom = currentZoom;
+
+    document.body.appendChild(sec);
+
+    dragState = {
+      sec,
+      placeholder,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+    };
+  };
+
+  const onMove = (ev) => {
+    const dx = Math.abs(ev.clientX - startX);
+    const dy = Math.abs(ev.clientY - startY);
+
+    if (!dragStarted) {
+      if (dx > 7 || dy > 7) {
+        clearTimeout(dragTimer);
+      }
+      return;
+    }
+
+    ev.preventDefault();
+
+    const state = dragState;
+    if (!state) return;
+
+    state.sec.style.left = (ev.clientX - state.offsetX) + 'px';
+    state.sec.style.top = (ev.clientY - state.offsetY) + 'px';
+
+    const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    const overSec = el && el.closest ? el.closest('.sec:not(.dragging):not(.placeholder)') : null;
+    if (!overSec) return;
+
+    const board = document.getElementById('board');
+    const rect = overSec.getBoundingClientRect();
+    if (ev.clientY < rect.top + rect.height / 2) {
+      board.insertBefore(state.placeholder, overSec);
+    } else {
+      board.insertBefore(state.placeholder, overSec.nextSibling);
+    }
+  };
+
+  const finish = () => {
+    cleanup();
+
+    if (!dragStarted) {
+      return;
+    }
+
+    const state = dragState;
+    dragState = null;
+
+    if (!state) return;
+
+    const { sec, placeholder } = state;
+
+    sec.classList.remove('dragging');
+    sec.style.position = '';
+    sec.style.left = '';
+    sec.style.top = '';
+    sec.style.width = '';
+    sec.style.zIndex = '';
+    sec.style.pointerEvents = '';
+    sec.style.zoom = '';
+
+    placeholder.replaceWith(sec);
+    saveOrderFromDOM();
+    reflowDates();
+  };
+
+  dragTimer = setTimeout(startDrag, 260);
+  window.addEventListener('pointermove', onMove, { passive: false });
+  window.addEventListener('pointerup', finish);
+  window.addEventListener('pointercancel', finish);
+}
+
 async function captureCanvas() {
-  const bar = document.getElementById('exportBar');
-  bar.style.visibility = 'hidden';
+  await document.fonts.ready;
+  await new Promise(r => setTimeout(r, 120));
 
-  // Scroll to top so html2canvas captures from origin
-  const savedScroll = window.scrollY;
-  window.scrollTo(0, 0);
+  const root = document.getElementById('captureRoot');
+  const oldZoom = document.documentElement.style.getPropertyValue('--zoom');
+  document.documentElement.style.setProperty('--zoom', '1');
 
-  const bodyW = Math.max(document.body.scrollWidth, 1200);
-  const bodyH = document.body.scrollHeight;
-
-  const canvas = await html2canvas(document.body, {
+  const canvas = await html2canvas(root, {
+    backgroundColor: '#070b12',
     scale: 2,
     useCORS: true,
     allowTaint: false,
     logging: false,
-    backgroundColor: '#080d14',
-    width: bodyW,
-    height: bodyH,
+    foreignObjectRendering: true,
     scrollX: 0,
     scrollY: 0,
-    windowWidth: bodyW,
-    windowHeight: bodyH,
-    imageTimeout: 15000,
+    width: root.scrollWidth,
+    height: root.scrollHeight,
+    windowWidth: root.scrollWidth,
+    windowHeight: root.scrollHeight,
     onclone: (doc) => {
-      // Hide export bar in clone
-      const b = doc.getElementById('exportBar');
-      if (b) b.style.display = 'none';
-      const ov = doc.getElementById('overlay');
-      if (ov) ov.style.display = 'none';
+      const clonedRoot = doc.getElementById('captureRoot');
+      const clonedZoom = doc.documentElement;
+      const clonedToolbar = doc.getElementById('toolbar');
+      const clonedExport = doc.getElementById('exportBar');
+      if (clonedToolbar) clonedToolbar.style.display = 'none';
+      if (clonedExport) clonedExport.style.display = 'none';
+      if (clonedRoot) clonedRoot.style.zoom = '1';
+      if (clonedZoom) clonedZoom.style.setProperty('--zoom', '1');
     }
   });
 
-  window.scrollTo(0, savedScroll);
-  bar.style.visibility = '';
+  if (oldZoom) {
+    document.documentElement.style.setProperty('--zoom', oldZoom);
+  } else {
+    document.documentElement.style.setProperty('--zoom', '1');
+  }
+
   return canvas;
 }
 
-/* ═══════════════ EXPORT AS IMAGE ═══════════════ */
+function setBusy(isBusy, msg, sub) {
+  const overlay = document.getElementById('overlay');
+  const btnImg = document.getElementById('btnImg');
+  const btnPdf = document.getElementById('btnPdf');
+  btnImg.disabled = isBusy;
+  btnPdf.disabled = isBusy;
+  overlay.classList.toggle('show', isBusy);
+  if (msg) document.getElementById('ov-msg').textContent = msg;
+  if (sub) document.getElementById('ov-sub').textContent = sub;
+}
+
 async function exportImage() {
-  showOverlay('جارٍ إنشاء الصورة...', 'يتم التقاط الجدول كاملاً بجودة عالية');
-  setBtns(true);
+  setBusy(true, 'جارٍ إنشاء الصورة...', 'يتم التقاط الجدول كاملاً بجودة عالية');
   try {
     const canvas = await captureCanvas();
     const link = document.createElement('a');
     link.download = 'جدول-المراجعة-النهائية.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
-  } catch(e) {
+  } catch (e) {
     alert('حدث خطأ أثناء التصدير: ' + e.message);
   } finally {
-    hideOverlay();
-    setBtns(false);
+    setBusy(false);
   }
 }
 
-/* ═══════════════ EXPORT AS PDF ═══════════════ */
 async function exportPDF() {
-  showOverlay('جارٍ إنشاء ملف PDF...', 'يتم تقسيم الجدول على صفحات A4 أفقية');
-  setBtns(true);
+  setBusy(true, 'جارٍ إنشاء ملف PDF...', 'يتم تقسيم الجدول على صفحات A4 أفقية');
   try {
     const canvas = await captureCanvas();
     const { jsPDF } = window.jspdf;
-
-    // A4 landscape dimensions in mm
-    const PDF_W = 297;
-    const PDF_H = 210;
-
-    // mm per canvas pixel (fit full width into PDF_W)
-    const mmPerPx = PDF_W / canvas.width;
-
-    // How many canvas pixels fit in one page height
-    const pageHeightPx = Math.round(PDF_H / mmPerPx);
-
-    const totalPages = Math.ceil(canvas.height / pageHeightPx);
-
     const pdf = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
@@ -894,36 +1551,49 @@ async function exportPDF() {
       compress: true
     });
 
+    const PDF_W = 297;
+    const PDF_H = 210;
+    const mmPerPx = PDF_W / canvas.width;
+    const pageHeightPx = Math.floor(PDF_H / mmPerPx);
+    const totalPages = Math.ceil(canvas.height / pageHeightPx);
+
     for (let p = 0; p < totalPages; p++) {
       if (p > 0) pdf.addPage('a4', 'landscape');
 
-      const srcY  = p * pageHeightPx;
-      const srcH  = Math.min(pageHeightPx, canvas.height - srcY);
+      const srcY = p * pageHeightPx;
+      const srcH = Math.min(pageHeightPx, canvas.height - srcY);
 
-      // Slice this page from full canvas
       const slice = document.createElement('canvas');
-      slice.width  = canvas.width;
+      slice.width = canvas.width;
       slice.height = srcH;
+
       const ctx = slice.getContext('2d');
-      // Fill background
-      ctx.fillStyle = '#080d14';
+      ctx.fillStyle = '#070b12';
       ctx.fillRect(0, 0, slice.width, slice.height);
       ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
 
-      const imgData   = slice.toDataURL('image/jpeg', 0.93);
-      const imgH_mm   = srcH * mmPerPx;
+      const imgData = slice.toDataURL('image/jpeg', 0.95);
+      const imgHmm = srcH * mmPerPx;
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, PDF_W, imgH_mm, '', 'FAST');
+      pdf.addImage(imgData, 'JPEG', 0, 0, PDF_W, imgHmm, '', 'FAST');
     }
 
     pdf.save('جدول-المراجعة-النهائية.pdf');
-  } catch(e) {
+  } catch (e) {
     alert('حدث خطأ أثناء التصدير: ' + e.message);
   } finally {
-    hideOverlay();
-    setBtns(false);
+    setBusy(false);
   }
 }
+
+function init() {
+  setupZoom();
+  renderBoard();
+  document.getElementById('btnImg').addEventListener('click', exportImage);
+  document.getElementById('btnPdf').addEventListener('click', exportPDF);
+}
+
+window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
